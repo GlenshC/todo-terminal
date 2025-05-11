@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "gc_logs.h": "c",
+        "stdio.h": "c",
+        "variant": "c"
+    }
+}
