@@ -45,7 +45,7 @@ int todo_stream_write(TodoT *todo)
     readwrite = fopen("todo.todo", "rb");
     if (readwrite == NULL)
     {
-        GC_LOG("reading failed");
+        GC_LOG("Todo not found. Creating new todo.");
         return todo_stream_write_new(todo);
     }
     
@@ -174,7 +174,7 @@ int todo_stream_read(TodoList *todolist)
     readwrite = fopen("todo.todo", "rb");
     if (readwrite == NULL)
     {
-        GC_LOG("reading failed\n");
+        GC_LOG("reading failed.\n");
         return 1;
     }
     
