@@ -2,6 +2,12 @@
     "files.associations": {
         "gc_logs.h": "c",
         "stdio.h": "c",
-        "variant": "c"
+        "variant": "c",
+        "stream.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "format": "c",
+        "initializer_list": "c",
+        "span": "c"
     }
 }

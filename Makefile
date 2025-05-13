@@ -34,7 +34,7 @@ BUILD_DIR := build
 # Source files (your code + glad/glfw if using source)
 C_SRC   := 	src/main.c \
 			src/todo.c \
-			src/file.c
+			src/stream.c
 
 CXX_SRC := 	
 
