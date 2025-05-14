@@ -65,10 +65,8 @@ int todo_stream_write(TodoT *todo)
 
     if (todo_stream_check_header(readwrite))
     {
-        GC_LOG("wrong header");
-        fclose(readwrite);
-        fclose(tempFile);
-        return 3;
+        GC_LOG("Wrong header, creating new file.");
+        return todo_stream_write_new(todo);
     }
 
     todo_stream_write_header(tempFile);
@@ -80,12 +78,12 @@ int todo_stream_write(TodoT *todo)
 
     // get title sizes
     stringSizes = malloc(sizeof(size_t) * newN);
+    strings = malloc(sizeof(char *) * newN);
     fread(stringSizes, sizeof(size_t), n, readwrite);
     fwrite(stringSizes, sizeof(size_t), n, tempFile);
     fwrite(&todo->titleSize, sizeof(size_t), 1, tempFile);
     
     // get titles
-    strings = malloc(sizeof(char *) * newN);
     for (size_t i = 0; i < n; i++)
     {
         size_t size = stringSizes[i];
@@ -159,6 +157,10 @@ int todo_stream_write(TodoT *todo)
 // get padding
 int todo_stream_read(TodoList *todolist)
 {
+    if (todolist == NULL)
+    {
+        return -1;
+    }
     FILE *readwrite;
     size_t size;
     size_t *titleSize;
@@ -168,9 +170,9 @@ int todo_stream_read(TodoList *todolist)
     size_t *priority;
     long long *created;
     long long *deadline;
-    
-    
     todolist->size = 0;
+    
+    
     readwrite = fopen("todo.todo", "rb");
     if (readwrite == NULL)
     {
@@ -180,7 +182,7 @@ int todo_stream_read(TodoList *todolist)
     
     if (todo_stream_check_header(readwrite))
     {
-        GC_LOG("wrong header");
+        GC_LOG("wrong header\n");
         fclose(readwrite);
         return 2;
     }
@@ -211,7 +213,6 @@ int todo_stream_read(TodoList *todolist)
         title[i][n] = 0;
     }
     
-    GC_LOG("find.\n");
     // get desc sizes
     fread(descSize, sizeof(size_t), size, readwrite);
     
@@ -245,6 +246,11 @@ int todo_stream_read(TodoList *todolist)
 
 void todo_stream_free_todolist(TodoList *todolist)
 {
+    if (NULL == todolist && 0 == todolist->size)
+    {
+        GC_LOG("todo list empty");
+        return;
+    }
     size_t size = todolist->size;
     
     free(todolist->titleSize);
@@ -253,18 +259,18 @@ void todo_stream_free_todolist(TodoList *todolist)
         free(todolist->title[i]);
     }
     free(todolist->title);
-
+    
     free(todolist->descSize);
     for (size_t i = 0; i < size; i++)
     {
         free(todolist->desc[i]);
     }
-    free(todolist->title);
+    free(todolist->desc);
     
     free(todolist->priority);
     free(todolist->created);
     free(todolist->deadline);
-
+    
     todolist->size = 0;
     todolist->titleSize = NULL;
     todolist->title = NULL;

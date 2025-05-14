@@ -13,7 +13,7 @@ endif
 
 # Compiler
 CC := gcc
-CXX := g++
+CXX := gcc
 CFLAGS := -Wall -Wextra
 CXXFLAGS := -Wall -Wextra
 PROJECT_FLAGS    :=

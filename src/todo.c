@@ -35,26 +35,30 @@
 #define isbounded(val, start, end)   (start <= val && val <= end)
 #define isboundedx(val, start, end)   (start < val && val < end)
 
-static void todo_add_cmd(int argc, char *argv[]);
-static void todo_list_cmd();
-static void todo_clear_cmd();
+static void todo_cmd_add(int argc, char *argv[]);
+static void todo_cmd_list(TodoList *list);
+static void todo_cmd_clear();
+static void todo_cmd_remove(TodoList *list);
 
 static void todo_add(char *title, char *description, TodoDate *tododate, unsigned int priority);
 
 void todo_CLI(int argc, char *argv[])
 {
-
+    TodoList list = {};
     if (todo_cmd("add") == 0)
     {
-        todo_add_cmd(argc, argv);
+        todo_cmd_add(argc, argv); // redesign on the add comand
     }
     else if (todo_cmd("list") == 0)
     {
-        todo_list_cmd();
+        todo_stream_read(&list);
+        
+        todo_cmd_list(&list);        
+        todo_stream_free_todolist(&list);
     }
     else if (todo_cmd("clear") == 0)
     {
-        todo_clear_cmd();
+        todo_cmd_clear();
     }
     else if (todo_cmd("get") == 0)
     {
@@ -62,8 +66,13 @@ void todo_CLI(int argc, char *argv[])
     }
     else if (todo_cmd("rm") == 0)
     {
-        GC_LOG("remove\n");
+        todo_stream_read(&list);
         
+        todo_cmd_list(&list);
+        todo_cmd_remove(&list);
+        todo_cmd_list(&list);
+
+        todo_stream_free_todolist(&list);
     }
     else if (todo_cmd("help") == 0)
     {
@@ -85,7 +94,7 @@ void todo_GUI()
 // todo add title desc -d 11/22/33 -p 1
 #define ADD_ARG_TITLE 2
 #define ADD_ARG_DESC  3
-static void todo_add_cmd(int argc, char *argv[])
+static void todo_cmd_add(int argc, char *argv[])
 {
     char *argtokens[TODO_MAX_TOKENS] = {};
 
@@ -135,6 +144,11 @@ static void todo_add(char *title, char *description, TodoDate *tododate, unsigne
     struct tm *created_tm = localtime(&raw_created);
     struct tm deadline_tm = *created_tm;
 
+    if (priority > 5U)
+    {
+        priority = 5U;
+    }
+
     int year_diff = (tododate->year) - (created_tm->tm_year + 1900);
     int mon_diff = (tododate->month) - (created_tm->tm_mon + 1);
     
@@ -174,7 +188,7 @@ static void todo_add(char *title, char *description, TodoDate *tododate, unsigne
     } else 
     {
         todotask.descSize = 1;
-        todotask.desc = "";
+        todotask.desc = "\0";
     }
     
     todotask.priority = priority;
@@ -186,33 +200,24 @@ static void todo_add(char *title, char *description, TodoDate *tododate, unsigne
 }
 
 
-static void todo_list_cmd()
+static void todo_cmd_list(TodoList *list)
 {
-    TodoList list;
     char buffer[1024];
     
-    if (todo_stream_read(&list))
+    printf("%-5s| %-10s %-12s %-10s %s\n", "No.", "Title", "Description", "Priority", "Deadline");
+    for (size_t i = 0, num = 1; i < list->size; i++)
     {
-        GC_LOG("file not found.\n");
-        return;
-    }
-    if (list.size == 0)
-    {
-        GC_LOG("No items\n");
-        return;
-    }
-    
-    printf("Title/Description/Priority/Deadline\n");
-    for (size_t i = 0; i < list.size; i++)
-    {
-        strftime(buffer, 1024, "%x", localtime(&list.deadline[i]));
-        printf("%s %s %llu %s\n", list.title[i], list.desc[i], list.priority[i], buffer);
-    }
+        if (list->priority[i] == 0xCC)
+        {
+            continue;   
+        }
 
-    todo_stream_free_todolist(&list);
+        strftime(buffer, 1024, "%x", localtime(&list->deadline[i]));
+        printf("%5llu| %-10s %-12s %-10llu %s\n", num++, list->title[i], list->desc[i], list->priority[i], buffer);
+    }
 }
 
-static void todo_clear_cmd()
+static void todo_cmd_clear()
 {
     char buffer[16];
     printf("Are you sure about that? (Yes/no): ");
@@ -227,6 +232,24 @@ static void todo_clear_cmd()
     {
         printf("Aborting...\n");
     }
+}
+
+static void todo_cmd_remove(TodoList *list)
+{
+    char buffer[32];
+    printf("\nEnter item number to remove: ");
+    fgets(buffer, 32, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+
+    unsigned int index = 0;
+    index = strtoull(buffer, NULL, 0);
+
+    if (index == 0)
+    {
+        return;
+    }
+
+    list->priority[index-1] = 0xCC;
 }
 /* 
 
