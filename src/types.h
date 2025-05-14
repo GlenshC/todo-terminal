@@ -28,6 +28,7 @@ typedef struct TodoT
 typedef struct DynamicTodoList
 {
     size_t size;
+    size_t capacity;
 
     size_t *titleSize;
     char **title;

@@ -6,30 +6,20 @@
 
 #include "gc_logs.h"
 
+#define gc_binceil64(x) (--(x), (x) |= (x) >> 1, (x) |= (x) >> 2, (x) |= (x) >> 4, (x) |= (x) >> 8, (x) |= (x) >> 16, (x) |= (x) >> 32, ++(x))
+
+#define STREAM_STARTING_CAPCITY 16
+#define STREAM_CAPACITY_MARGIN 4
+
 static const char *TODO_FILE_HEADER = "TODO";
 static const size_t TODO_FILE_PADDING = 0xCCCCCCCCCCCCCCCC;
 
-static int todo_stream_write_new(TodoT *todo);
+
+static int todo_stream_write_new(TodoList *list);
 static void todo_stream_write_header(FILE *file);
 static int todo_stream_check_header(FILE *file);
+int todo_stream_init(TodoList *list, size_t capacity);
 
-// FILE *ReadFile;
-// FILE *WriteFile;
-
-/* FILE *todo_stream_init()
-{
-    
-}
-
-void todo_stream_close()
-{
-
-}
-
-int todo_stream_isopen()
-{
-
-} */
 
 // WRITING PROCEDURE
 // create temp file tmpfile()
@@ -38,108 +28,58 @@ int todo_stream_isopen()
 // get element
 // write to temp the new element
 // do to other stuff
-int todo_stream_write(TodoT *todo)
+int todo_stream_write(TodoList *list) // capacity update
 {
-    FILE *readwrite;
-    FILE *tempFile;
-    readwrite = fopen("todo.todo", "rb");
-    if (readwrite == NULL)
+    if (list == NULL)
     {
-        GC_LOG("Todo not found. Creating new todo.");
-        return todo_stream_write_new(todo);
+        return -1;
     }
+    
+    FILE *tempFile;
+    size_t n = list->size;
     
     tempFile = fopen("temp.temptodo", "wb");
     if (tempFile == NULL)
     {
         GC_LOG("temp failed");
-        free(readwrite);
         return 2;
     }
     
-        
-    size_t n;
-    size_t newN;
-    char **strings;
-    size_t *stringSizes;
-
-    if (todo_stream_check_header(readwrite))
-    {
-        GC_LOG("Wrong header, creating new file.");
-        return todo_stream_write_new(todo);
-    }
-
     todo_stream_write_header(tempFile);
     
-    // get number of elements
-    fread(&n, sizeof(size_t), 1, readwrite);
-    newN = n+1;
-    fwrite(&newN, sizeof(size_t), 1, tempFile);
+    // number of elements
+    fwrite(&n, sizeof(size_t), 1, tempFile);
 
-    // get title sizes
-    stringSizes = malloc(sizeof(size_t) * newN);
-    strings = malloc(sizeof(char *) * newN);
-    fread(stringSizes, sizeof(size_t), n, readwrite);
-    fwrite(stringSizes, sizeof(size_t), n, tempFile);
-    fwrite(&todo->titleSize, sizeof(size_t), 1, tempFile);
-    
-    // get titles
+    // title sizes
+    fwrite(list->titleSize, sizeof(size_t), n, tempFile);
+
+    // titles
     for (size_t i = 0; i < n; i++)
     {
-        size_t size = stringSizes[i];
-        strings[i] =  malloc(sizeof(char) * size);
-        
-        fread(strings[i], sizeof(char), size, readwrite);
-        fwrite(strings[i], sizeof(char), size, tempFile);
+        fwrite(list->title[i], sizeof(char), list->titleSize[i], tempFile);
     }
-    fwrite(todo->title, sizeof(char), todo->titleSize, tempFile);
     
+    // description sizes
+    fwrite(list->descSize, sizeof(size_t), n, tempFile);
+
+    // descriptions
     for (size_t i = 0; i < n; i++)
     {
-        free(strings[i]);
+        fwrite(list->desc[i], sizeof(char), list->descSize[i], tempFile);
     }
-    
-    // get desc sizes
-    fread(stringSizes, sizeof(size_t), n, readwrite);
-    fwrite(stringSizes, sizeof(size_t), n, tempFile);
-    fwrite(&todo->descSize, sizeof(size_t), 1, tempFile);
-    
-    // get descs
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t size = stringSizes[i];
-        strings[i] =  malloc(sizeof(char) * size);
-        
-        fread(strings[i], sizeof(char), size, readwrite);
-        fwrite(strings[i], sizeof(char), size, tempFile);
-    }
-    fwrite(todo->desc, sizeof(char), todo->descSize, tempFile);
 
-    for (size_t i = 0; i < n; i++)
-    {
-        free(strings[i]);        
-    }
-    free(strings);
+    // priority
+    fwrite(list->priority, sizeof(size_t), n, tempFile);
 
-    fread(stringSizes, sizeof(size_t), n, readwrite);
-    fwrite(stringSizes, sizeof(size_t), n, tempFile);
-    fwrite(&todo->priority, sizeof(size_t), 1, tempFile);
+    // created
+    fwrite(list->created, sizeof(long long), n, tempFile);
     
-    fread(stringSizes, sizeof(long long), n, readwrite);
-    fwrite(stringSizes, sizeof(long long), n, tempFile);
-    fwrite(&todo->created, sizeof(long long), 1, tempFile);
-    
-    fread(stringSizes, sizeof(long long), n, readwrite);
-    fwrite(stringSizes, sizeof(long long), n, tempFile);
-    fwrite(&todo->deadline, sizeof(long long), 1, tempFile);
-
-    free(stringSizes);
+    // deadline
+    fwrite(list->deadline, sizeof(long long), n, tempFile);
 
     fwrite(&TODO_FILE_PADDING, sizeof(size_t), 1, tempFile);
+
     fclose(tempFile);
-    fclose(readwrite);
-
-
     remove("todo.todo");
     rename("temp.temptodo", "todo.todo");
 
@@ -147,31 +87,19 @@ int todo_stream_write(TodoT *todo)
         
 }
 
-
-
 // READING prodecure
 // check if header exist;
 // get padding
 // get number of elements;
 // get the other stuff
 // get padding
-int todo_stream_read(TodoList *todolist)
+int todo_stream_read(TodoList *todolist) // capacity update done
 {
     if (todolist == NULL)
     {
         return -1;
     }
     FILE *readwrite;
-    size_t size;
-    size_t *titleSize;
-    char **title;
-    size_t *descSize;
-    char **desc;
-    size_t *priority;
-    long long *created;
-    long long *deadline;
-    todolist->size = 0;
-    
     
     readwrite = fopen("todo.todo", "rb");
     if (readwrite == NULL)
@@ -188,17 +116,19 @@ int todo_stream_read(TodoList *todolist)
     }
     
     // get number of elements
+    size_t size;
     fread(&size, sizeof(size_t), 1, readwrite);
     
     // malloc
-    titleSize   = malloc(sizeof(size_t) * size);
-    title       = malloc(sizeof(char *) * size);
-    descSize    = malloc(sizeof(size_t) * size);
-    desc        = malloc(sizeof(char *) * size);
-    priority    = malloc(sizeof(size_t) * size);
-    created     = malloc(sizeof(long long) * size);
-    deadline    = malloc(sizeof(long long) * size);
-    
+    todo_stream_init(todolist, size);
+    todolist->size = size;
+    size_t *titleSize   = todolist->titleSize;
+    char **title        = todolist->title;
+    size_t *descSize    = todolist->descSize;
+    char **desc         = todolist->desc;
+    size_t *priority    = todolist->priority;
+    long long *created  = todolist->created;
+    long long *deadline = todolist->deadline;
     
     // get title sizes
     fread(titleSize, sizeof(size_t), size, readwrite);
@@ -231,20 +161,11 @@ int todo_stream_read(TodoList *todolist)
     fread(deadline, sizeof(long long), size, readwrite);
 
     fclose(readwrite);
-
-    todolist->size = size;
-    todolist->titleSize = titleSize;
-    todolist->title = title;
-    todolist->descSize = descSize;
-    todolist->desc = desc;
-    todolist->priority = priority;
-    todolist->created = created;
-    todolist->deadline = deadline;
-
     return 0;
 }
 
-void todo_stream_free_todolist(TodoList *todolist)
+// frees todolist
+void todo_stream_free_todolist(TodoList *todolist) // capacity update
 {
     if (NULL == todolist && 0 == todolist->size)
     {
@@ -272,6 +193,7 @@ void todo_stream_free_todolist(TodoList *todolist)
     free(todolist->deadline);
     
     todolist->size = 0;
+    todolist->capacity = 0;
     todolist->titleSize = NULL;
     todolist->title = NULL;
     todolist->descSize = NULL;
@@ -281,52 +203,244 @@ void todo_stream_free_todolist(TodoList *todolist)
     todolist->deadline = NULL;
 }
 
-/* 
-    //.todo header must exist or else; 
-    TODO // must be 4 bytes
-
-    0xCCCCCCCCCCCCCCCC pading
-    
-    size_t n
-    
-    size_t titleSize[];
-    char *title[];
-    
-    size_t descSize[];
-    char *desc[];
-        
-    size_t priority[];
-    time_t created[];
-    time_t deadline[];
-    
-    0xCCCCCCCCCCCCCCCC pading
-*/
-
-
-static int todo_stream_write_new(TodoT *todo)
+// initializes todolist stream
+int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
 {
+    if (list == NULL)
+    {
+        return -1;
+    }
+
+    if (capacity < 16)
+    {
+        capacity = STREAM_STARTING_CAPCITY;
+    }
+    else 
+    {
+        gc_binceil64(capacity);
+    }
+
+    // size and capacity
+    list->capacity = capacity;
+    list->size = 0;
+    
+    // mallocs
+    list->titleSize = malloc(sizeof(*list->titleSize)   * capacity);
+    if (list->titleSize == NULL)
+    {
+        return 1;
+    }
+
+    list->title     = malloc(sizeof(*list->title)       * capacity);
+    if (list->title == NULL)
+    {
+        return 1;
+    }
+    
+    list->descSize  = malloc(sizeof(*list->descSize)    * capacity);
+    if (list->descSize == NULL)
+    {
+        return 1;
+    }
+    
+    list->desc      = malloc(sizeof(*list->desc)        * capacity);
+    if (list->desc == NULL)
+    {
+        return 1;
+    }
+
+    list->priority  = malloc(sizeof(*list->priority)    * capacity);
+    if (list->priority == NULL)
+    {
+        return 1;
+    }
+
+    list->created   = malloc(sizeof(*list->created)     * capacity);
+    if (list->created == NULL)
+    {
+        return 1;
+    }
+
+    list->deadline  = malloc(sizeof(*list->deadline)    * capacity);
+    if (list->deadline == NULL)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+// grow todolist stream
+int todo_stream_grow(TodoList *list, size_t newCapacity) // capacity update
+{
+    if (list == NULL)
+    {
+        return -1;
+    }
+
+    size_t capacity = newCapacity;
+    gc_binceil64(capacity);
+    
+    size_t *titleSize   = realloc(list->titleSize, capacity * sizeof(*(list->titleSize)));
+    if (titleSize == NULL)
+    {
+        return 1;
+    }
+    list->titleSize = titleSize;
+    
+    char **title        = realloc(list->title, capacity * sizeof(*(list->title)));
+    if (title == NULL)
+    {
+        return 1;
+    }
+    list->title = title;
+    
+    size_t *descSize    = realloc(list->descSize, capacity * sizeof(*(list->descSize)));
+    if (descSize == NULL)
+    {
+        return 1;
+    }
+    list->descSize = descSize;
+    
+    char **desc         = realloc(list->desc, capacity * sizeof(*(list->desc)));
+    if (desc == NULL)
+    {
+        return 1;
+    }
+    list->desc = desc;
+    
+    size_t *priority    = realloc(list->priority, capacity * sizeof(*(list->priority)));
+    if (priority == NULL)
+    {
+        return 1;
+    }
+    list->priority = priority;
+    
+    long long *created  = realloc(list->created, capacity * sizeof(*(list->created)));
+    if (created == NULL)
+    {
+        return 1;
+    }
+    list->created = created;
+    
+    long long *deadline = realloc(list->deadline, capacity * sizeof(*(list->deadline)));
+    if (deadline == NULL)
+    {
+        return 1;
+    }
+    list->deadline = deadline;
+    
+    list->capacity = capacity;
+
+    return 0;
+}
+
+
+int todo_stream_push(TodoList *list, TodoT *todo)
+{
+    if (list == NULL || todo == NULL)
+    {
+        return -1;
+    }
+
+    if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
+    {
+        todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
+    }
+    
+    size_t index = (list->size); 
+    
+    list->titleSize[index]  = todo->titleSize;
+    list->title[index]      = todo->title;
+    list->descSize[index]   = todo->descSize;
+    list->desc[index]       = todo->desc;
+    list->priority[index]   = todo->priority;
+    list->created[index]    = todo->created;
+    list->deadline[index]   = todo->deadline;
+    
+    (list->size)++;
+    return 0;
+}
+
+int todo_stream_remove(TodoList *list, size_t index)
+{
+    if (list == NULL)
+    {
+        return -1;
+    }
+
+    if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
+    {
+        todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
+    }
+    
+    (list->size)--;
+    size_t end = list->size;
+
+    list->titleSize[index]  = list->titleSize[end];
+    list->title[index]      = list->title[end];
+    list->descSize[index]   = list->descSize[end];
+    list->desc[index]       = list->desc[end];
+    list->priority[index]   = list->priority[end];
+    list->created[index]    = list->created[end];
+    list->deadline[index]   = list->deadline[end];
+    
+    return 0;
+}
+
+/* ==============================
+    Private Functions 
+   ==============================*/
+
+static int todo_stream_write_new(TodoList *list)
+{
+    if (list == NULL)
+    {
+        return -1;
+    }
+
     FILE *readwrite = fopen("todo.todo", "wb");
     if (readwrite == NULL)
     {
         return 1;
     }
 
-    size_t n = 1;
+    size_t size = list->size;
 
     todo_stream_write_header(readwrite);
     
-    fwrite(&n, sizeof(size_t), 1, readwrite);
+    fwrite(&size, sizeof(list->size), 1, readwrite);
+
+    if (size > 0)
+    {
+        // title sizes
+        fwrite(list->titleSize, sizeof(*list->titleSize), size, readwrite);
     
-    fwrite(&todo->titleSize, sizeof(size_t), 1, readwrite);
-    fwrite(todo->title, sizeof(char), todo->titleSize, readwrite);
+        // titles
+        for (size_t i = 0; i < size; i++)
+        {
+            fwrite(list->title[i], sizeof(*list->title), list->titleSize[i], readwrite);
+        }
+        
+        // description sizes
+        fwrite(list->descSize, sizeof(*list->descSize), size, readwrite);
     
-    fwrite(&todo->descSize, sizeof(size_t), 1, readwrite);
-    fwrite(todo->desc, sizeof(char), todo->descSize, readwrite);
+        // descriptions
+        for (size_t i = 0; i < size; i++)
+        {
+            fwrite(list->desc[i], sizeof(*list->desc), list->descSize[i], readwrite);
+        }
     
-    fwrite(&todo->priority, sizeof(size_t),     1,  readwrite);
-    fwrite(&todo->created,  sizeof(long long),  1,  readwrite);
-    fwrite(&todo->deadline, sizeof(long long),  1,  readwrite);
+        // priority
+        fwrite(list->priority, sizeof(*list->priority), size, readwrite);
     
+        // created
+        fwrite(list->created, sizeof(*list->created), size, readwrite);
+        
+        // deadline
+        fwrite(list->deadline, sizeof(*list->deadline), size, readwrite);
+    }
+
     fwrite(&TODO_FILE_PADDING, sizeof(size_t), 1, readwrite);
     
     fclose(readwrite);

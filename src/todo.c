@@ -10,6 +10,14 @@
 #include "stream.h"
 #include "todo.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef GC_DEBUG
+#define GC_PERFORMANCE_TEST
+// #define GC_PERFORMANCE_ITERATIONS 100000
+#endif
 /* 
     first add terminal functionality
     
@@ -35,53 +43,83 @@
 #define isbounded(val, start, end)   (start <= val && val <= end)
 #define isboundedx(val, start, end)   (start < val && val < end)
 
-static void todo_cmd_add(int argc, char *argv[]);
+static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
 static void todo_cmd_list(TodoList *list);
 static void todo_cmd_clear();
 static void todo_cmd_remove(TodoList *list);
 
-static void todo_add(char *title, char *description, TodoDate *tododate, unsigned int priority);
+static void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority);
 
 void todo_CLI(int argc, char *argv[])
 {
     TodoList list = {};
-    if (todo_cmd("add") == 0)
-    {
-        todo_cmd_add(argc, argv); // redesign on the add comand
-    }
-    else if (todo_cmd("list") == 0)
-    {
-        todo_stream_read(&list);
-        
-        todo_cmd_list(&list);        
-        todo_stream_free_todolist(&list);
-    }
-    else if (todo_cmd("clear") == 0)
-    {
-        todo_cmd_clear();
-    }
-    else if (todo_cmd("get") == 0)
-    {
-        GC_LOG("get\n");
-    }
-    else if (todo_cmd("rm") == 0)
-    {
-        todo_stream_read(&list);
-        
-        todo_cmd_list(&list);
-        todo_cmd_remove(&list);
-        todo_cmd_list(&list);
+    todo_stream_read(&list);
 
-        todo_stream_free_todolist(&list);
-    }
-    else if (todo_cmd("help") == 0)
+
+#ifdef GC_PERFORMANCE_TEST
+#ifdef _WIN32
+    LARGE_INTEGER freq, start, end;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&start);
+#else
+    clock_t start, end;
+    double cpu_time_used;
+
+    start = clock();
+#endif
+#endif
+    
+    // Code to measure
+    #ifdef GC_PERFORMANCE_ITERATIONS
+    for (volatile long i = 0; i < GC_PERFORMANCE_ITERATIONS; i++)
+    #endif
     {
-        GC_LOG("help\n");
+        if (todo_cmd("add") == 0)
+        {
+            todo_cmd_add(&list, argc, argv); // redesign on the add comand
+            
+        }
+        else if (todo_cmd("list") == 0)
+        {
+            todo_cmd_list(&list);        
+        }
+        else if (todo_cmd("clear") == 0)
+        {
+            todo_cmd_clear();
+        }
+        else if (todo_cmd("get") == 0)
+        {
+            GC_LOG("get\n"); // add
+        }
+        else if (todo_cmd("rm") == 0)
+        {
+            todo_cmd_list(&list);
+            todo_cmd_remove(&list);
+        }
+        else if (todo_cmd("help") == 0)
+        {
+            GC_LOG("help\n"); // add
+        }
+        else 
+        {
+            GC_LOG("Wrong Usage\n");
+        }
     }
-    else 
-    {
-        GC_LOG("Wrong Usage\n");
-    }
+
+#ifdef GC_PERFORMANCE_TEST
+#ifdef _WIN32
+    QueryPerformanceCounter(&end);
+    double elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
+    printf("Elapsed time: %lf seconds\n", elapsed);
+#else
+    end = clock();
+
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Time taken: %lf seconds\n", cpu_time_used);
+#endif
+#endif
+    todo_stream_write(&list);
+    todo_stream_free_todolist(&list);
 }
 
 void todo_GUI()
@@ -94,7 +132,7 @@ void todo_GUI()
 // todo add title desc -d 11/22/33 -p 1
 #define ADD_ARG_TITLE 2
 #define ADD_ARG_DESC  3
-static void todo_cmd_add(int argc, char *argv[])
+static void todo_cmd_add(TodoList *list, int argc, char *argv[])
 {
     char *argtokens[TODO_MAX_TOKENS] = {};
 
@@ -133,11 +171,11 @@ static void todo_cmd_add(int argc, char *argv[])
             description = nextarg;
         }
     }
-
-    todo_add(argv[ADD_ARG_TITLE], description, &date, priority);
+    
+    todo_add(list, argv[ADD_ARG_TITLE], description, &date, priority);
 }
 
-static void todo_add(char *title, char *description, TodoDate *tododate, unsigned int priority)
+static void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority)
 {
     time_t raw_created = time(NULL);
     time_t raw_deadline;
@@ -195,8 +233,7 @@ static void todo_add(char *title, char *description, TodoDate *tododate, unsigne
     todotask.created = raw_created;
     todotask.deadline = raw_deadline;
     
-    todo_stream_write(&todotask);
-
+    todo_stream_push(list, &todotask);
 }
 
 
@@ -204,7 +241,7 @@ static void todo_cmd_list(TodoList *list)
 {
     char buffer[1024];
     
-    printf("%-5s| %-10s %-12s %-10s %s\n", "No.", "Title", "Description", "Priority", "Deadline");
+    printf("%-5s| %-24s %-32s %-10s %s\n", "No.", "Title", "Description", "Priority", "Deadline");
     for (size_t i = 0, num = 1; i < list->size; i++)
     {
         if (list->priority[i] == 0xCC)
@@ -213,8 +250,16 @@ static void todo_cmd_list(TodoList *list)
         }
 
         strftime(buffer, 1024, "%x", localtime(&list->deadline[i]));
-        printf("%5llu| %-10s %-12s %-10llu %s\n", num++, list->title[i], list->desc[i], list->priority[i], buffer);
+        if (list->priority[i])
+        {
+            printf("%5llu| %-24s %-32s %-10llu %s\n", num++, list->title[i], list->desc[i], list->priority[i], buffer);
+        }
+        else
+        {
+            printf("%5llu| %-24s %-32s %-10s %s\n", num++, list->title[i], list->desc[i], "", buffer);
+        }
     }
+    printf("\n");
 }
 
 static void todo_cmd_clear()
@@ -249,7 +294,7 @@ static void todo_cmd_remove(TodoList *list)
         return;
     }
 
-    list->priority[index-1] = 0xCC;
+    todo_stream_remove(list, index-1);
 }
 /* 
 
