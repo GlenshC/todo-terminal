@@ -68,7 +68,20 @@ void todo_CLI(int argc, char *argv[])
     start = clock();
 #endif
 #endif
-    
+
+/* 
+    sorting feature:
+    link list
+
+    01254
+    struct {
+        unsigned int index;
+        unsigned int next;
+    }
+
+
+*/
+
     // Code to measure
     #ifdef GC_PERFORMANCE_ITERATIONS
     for (volatile long i = 0; i < GC_PERFORMANCE_ITERATIONS; i++)
@@ -244,10 +257,13 @@ static void todo_cmd_list(TodoList *list)
     printf("%-5s| %-24s %-32s %-10s %s\n", "No.", "Title", "Description", "Priority", "Deadline");
     for (size_t i = 0, num = 1; i < list->size; i++)
     {
+    /*
+        // depreciated 
         if (list->priority[i] == 0xCC)
         {
             continue;   
-        }
+        } 
+    */
 
         strftime(buffer, 1024, "%x", localtime(&list->deadline[i]));
         if (list->priority[i])

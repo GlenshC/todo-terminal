@@ -362,16 +362,12 @@ int todo_stream_push(TodoList *list, TodoT *todo)
     return 0;
 }
 
+// fast remove
 int todo_stream_remove(TodoList *list, size_t index)
 {
     if (list == NULL)
     {
         return -1;
-    }
-
-    if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
-    {
-        todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
     }
     
     (list->size)--;
@@ -384,6 +380,35 @@ int todo_stream_remove(TodoList *list, size_t index)
     list->priority[index]   = list->priority[end];
     list->created[index]    = list->created[end];
     list->deadline[index]   = list->deadline[end];
+    
+    return 0;
+}
+
+// removes by shifting
+int todo_stream_remove_inorder(TodoList *list, size_t index)
+{
+    if (list == NULL)
+    {
+        return -1;
+    }
+    
+    (list->size)--;
+    size_t end = list->size;
+
+    for (size_t i = index; i < end; i++)
+    {
+        list->titleSize[i]  = list->titleSize[i+1];
+        list->title[i]      = list->title[i+1];
+        list->descSize[i]   = list->descSize[i+1];
+        list->desc[i]       = list->desc[i+1];
+        list->priority[i]   = list->priority[i+1];
+        list->created[i]    = list->created[i+1];
+        list->deadline[i]   = list->deadline[i+1];
+    }
+    /* 
+        queue the remove cmd
+        an array of indices which we shift
+    */
     
     return 0;
 }
