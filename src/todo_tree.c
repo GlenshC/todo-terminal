@@ -16,6 +16,10 @@ TRoot *todo_tree_init()
 
 void todo_tree_free(TRoot **root)
 {
+    if (root == NULL)
+    {
+        return;
+    }
     todo_tree_free_internals(*root);
     free(*root);
     *root = NULL;
