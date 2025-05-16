@@ -5,6 +5,9 @@
 #include <string.h>
 
 #include "gc_logs.h"
+#include "todo_tree.h"
+#include "todo_cmp.h"
+
 
 #define gc_binceil64(x) (--(x), (x) |= (x) >> 1, (x) |= (x) >> 2, (x) |= (x) >> 4, (x) |= (x) >> 8, (x) |= (x) >> 16, (x) |= (x) >> 32, ++(x))
 
@@ -15,10 +18,12 @@ static const char *TODO_FILE_HEADER = "TODO";
 static const size_t TODO_FILE_PADDING = 0xCCCCCCCCCCCCCCCC;
 
 
-static int todo_stream_write_new(TodoList *list);
+// static int todo_stream_write_new(TodoList *list); // depreciated
 static void todo_stream_write_header(FILE *file);
 static int todo_stream_check_header(FILE *file);
 int todo_stream_init(TodoList *list, size_t capacity);
+
+// static void todo_stream_display_sorted(TodoList *list, unsigned int value);
 
 
 // WRITING PROCEDURE
@@ -161,46 +166,9 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     fread(deadline, sizeof(long long), size, readwrite);
 
     fclose(readwrite);
-    return 0;
-}
+    todo_stream_sort(todolist, todolist->sortingFunc);
 
-// frees todolist
-void todo_stream_free_todolist(TodoList *todolist) // capacity update
-{
-    if (NULL == todolist && 0 == todolist->size)
-    {
-        GC_LOG("todo list empty");
-        return;
-    }
-    size_t size = todolist->size;
-    
-    free(todolist->titleSize);
-    for (size_t i = 0; i < size; i++)
-    {
-        free(todolist->title[i]);
-    }
-    free(todolist->title);
-    
-    free(todolist->descSize);
-    for (size_t i = 0; i < size; i++)
-    {
-        free(todolist->desc[i]);
-    }
-    free(todolist->desc);
-    
-    free(todolist->priority);
-    free(todolist->created);
-    free(todolist->deadline);
-    
-    todolist->size = 0;
-    todolist->capacity = 0;
-    todolist->titleSize = NULL;
-    todolist->title = NULL;
-    todolist->descSize = NULL;
-    todolist->desc = NULL;
-    todolist->priority = NULL;
-    todolist->created = NULL;
-    todolist->deadline = NULL;
+    return 0;
 }
 
 // initializes todolist stream
@@ -266,6 +234,9 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     {
         return 1;
     }
+
+    list->sortedList = NULL;
+    list->sortingFunc = todo_tree_defaultCompare;
 
     return 0;
 }
@@ -343,6 +314,12 @@ int todo_stream_push(TodoList *list, TodoT *todo)
         return -1;
     }
 
+    if (list->size >= TODO_STREAM_MAX_TODOS)
+    {
+        GC_LOG("TODO PUSH FAILED: MAX CAPACITY!\n");
+        return -2;
+    }
+
     if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
     {
         todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
@@ -369,17 +346,36 @@ int todo_stream_remove(TodoList *list, size_t index)
     {
         return -1;
     }
-    
+    if (index >= list->size)
+    {
+        printf("Invalid Operation: Out-of-Range.\n");
+        return -2;
+    }
+    //void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare);
     (list->size)--;
     size_t end = list->size;
 
-    list->titleSize[index]  = list->titleSize[end];
-    list->title[index]      = list->title[end];
-    list->descSize[index]   = list->descSize[end];
-    list->desc[index]       = list->desc[end];
-    list->priority[index]   = list->priority[end];
-    list->created[index]    = list->created[end];
-    list->deadline[index]   = list->deadline[end];
+    
+    todo_tree_remove(list, list->sortedList, index, todo_tree_priorityCompare);
+    
+    if (index != end)
+    {
+        todo_tree_remove(list, list->sortedList, end, todo_tree_priorityCompare);
+        
+        list->titleSize[index]  = list->titleSize[end];
+        list->title[index]      = list->title[end];
+        list->descSize[index]   = list->descSize[end];
+        list->desc[index]       = list->desc[end];
+        list->priority[index]   = list->priority[end];
+        list->created[index]    = list->created[end];
+        list->deadline[index]   = list->deadline[end];
+        
+        todo_tree_push(list, list->sortedList, index, todo_tree_priorityCompare);
+    }
+    
+    
+    
+    // @bst remove the index and add index again
     
     return 0;
 }
@@ -413,9 +409,76 @@ int todo_stream_remove_inorder(TodoList *list, size_t index)
     return 0;
 }
 
+
+// frees todolist
+void todo_stream_free_todolist(TodoList *todolist) // capacity update
+{
+    if (NULL == todolist && 0 == todolist->size)
+    {
+        GC_LOG("todo list empty");
+        return;
+    }
+    size_t size = todolist->size;
+    
+    free(todolist->titleSize);
+    for (size_t i = 0; i < size; i++)
+    {
+        free(todolist->title[i]);
+    }
+    free(todolist->title);
+    
+    free(todolist->descSize);
+    for (size_t i = 0; i < size; i++)
+    {
+        free(todolist->desc[i]);
+    }
+    free(todolist->desc);
+    
+    free(todolist->priority);
+    free(todolist->created);
+    free(todolist->deadline);
+
+    todo_tree_free(&todolist->sortedList);
+    
+    todolist->size = 0;
+    todolist->capacity = 0;
+    todolist->titleSize = NULL;
+    todolist->title = NULL;
+    todolist->descSize = NULL;
+    todolist->desc = NULL;
+    todolist->priority = NULL;
+    todolist->created = NULL;
+    todolist->deadline = NULL;
+    todolist->sortedList = NULL;
+}
+
+void todo_stream_sort(TodoList *list, todotreeCmpFun compare)
+{
+    if (compare == NULL)
+    {
+        return;
+    }
+    if (list->sortedList != NULL)
+    {
+        todo_tree_free(&list->sortedList);
+    }
+    
+    TRoot *root = todo_tree_init();
+    list->sortedList = root;
+
+    size_t size = list->size;
+    for (size_t i =0; i < size; i++)
+    {
+        todo_tree_push(list, root, i, compare);
+    }
+}
+
 /* ==============================
     Private Functions 
    ==============================*/
+
+   
+/* 
 
 static int todo_stream_write_new(TodoList *list)
 {
@@ -471,7 +534,7 @@ static int todo_stream_write_new(TodoList *list)
     fclose(readwrite);
 
     return 0;
-}
+} */
 
 static void todo_stream_write_header(FILE *file)
 {

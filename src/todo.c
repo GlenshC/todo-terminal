@@ -8,7 +8,9 @@
 #include "gc_tokens.h"
 #include "types.h"
 #include "stream.h"
+#include "todo_tree.h"
 #include "todo.h"
+#include "todo_cmp.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +18,7 @@
 
 #ifdef GC_DEBUG
 #define GC_PERFORMANCE_TEST
-// #define GC_PERFORMANCE_ITERATIONS 100000
+// #define GC_PERFORMANCE_ITERATIONS 1026
 #endif
 /* 
     first add terminal functionality
@@ -44,15 +46,29 @@
 #define isboundedx(val, start, end)   (start < val && val < end)
 
 static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
-static void todo_cmd_list(TodoList *list);
 static void todo_cmd_clear();
 static void todo_cmd_remove(TodoList *list);
 
 static void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority);
+static void todo_stream_display_sorted(TodoList *list, unsigned int index);
+static void todo_list(TodoList *list);
+static void todo_sorting_arg(TodoList *list, int argc, char *argv[]);
 
 void todo_CLI(int argc, char *argv[])
 {
     TodoList list = {};
+
+    if (todo_cmd("clear") == 0)
+    {
+        todo_cmd_clear();
+        return;
+    }
+    else if (todo_cmd("help") == 0)
+    {
+        printf("help\n"); // add
+        return;
+    }
+
     todo_stream_read(&list);
 
 
@@ -69,19 +85,6 @@ void todo_CLI(int argc, char *argv[])
 #endif
 #endif
 
-/* 
-    sorting feature:
-    link list
-
-    01254
-    struct {
-        unsigned int index;
-        unsigned int next;
-    }
-
-
-*/
-
     // Code to measure
     #ifdef GC_PERFORMANCE_ITERATIONS
     for (volatile long i = 0; i < GC_PERFORMANCE_ITERATIONS; i++)
@@ -90,32 +93,33 @@ void todo_CLI(int argc, char *argv[])
         if (todo_cmd("add") == 0)
         {
             todo_cmd_add(&list, argc, argv); // redesign on the add comand
-            
-        }
-        else if (todo_cmd("list") == 0)
-        {
-            todo_cmd_list(&list);        
-        }
-        else if (todo_cmd("clear") == 0)
-        {
-            todo_cmd_clear();
-        }
-        else if (todo_cmd("get") == 0)
-        {
-            GC_LOG("get\n"); // add
         }
         else if (todo_cmd("rm") == 0)
         {
-            todo_cmd_list(&list);
+            todo_sorting_arg(&list, argc, argv);
+            todo_stream_sort(&list, list.sortingFunc);
+
+            todo_list(&list);
             todo_cmd_remove(&list);
         }
-        else if (todo_cmd("help") == 0)
+        else if (todo_cmd("list") == 0)
         {
-            GC_LOG("help\n"); // add
+            todo_sorting_arg(&list, argc, argv);
+            todo_stream_sort(&list, list.sortingFunc);
+
+            todo_list(&list);    
+        }
+        else if (todo_cmd("get") == 0)
+        {
+            printf("get\n"); // add
+        }
+        else if (todo_cmd("edit") == 0)
+        {
+            printf("edit\n"); // add
         }
         else 
         {
-            GC_LOG("Wrong Usage\n");
+            printf("Wrong Usage\n");
         }
     }
 
@@ -141,8 +145,49 @@ void todo_GUI()
 }
 
 
-// 0    1   2     3    4  5        6  7
-// todo add title desc -d 11/22/33 -p 1
+// 0    1    2     3    4  5        6  7
+// todo list -p
+
+static void todo_cmd_clear()
+{
+    char buffer[16];
+    printf("Are you sure about that? (Yes/no): ");
+    fgets(buffer, 16, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+    if (strcmp(buffer, "Yes") == 0)
+    {
+        remove("todo.todo");
+        printf("Cleared Todos.\n");
+    }
+    else
+    {
+        printf("Aborting...\n");
+    }
+}
+
+static void todo_cmd_remove(TodoList *list)
+{
+    char buffer[32];
+    printf("\nEnter item ID to remove: ");
+    fgets(buffer, 32, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+    if (strcmp("q", buffer) == 0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    size_t index = 0;
+    index = strtoull(buffer, NULL, 0);
+
+    if (index == 0)
+    {
+        printf("Invalid ID.\n");
+        return;
+    }
+    
+    todo_stream_remove(list, index-1);
+    printf("\n");
+}
+
 #define ADD_ARG_TITLE 2
 #define ADD_ARG_DESC  3
 static void todo_cmd_add(TodoList *list, int argc, char *argv[])
@@ -250,67 +295,56 @@ static void todo_add(TodoList *list, char *title, char *description, TodoDate *t
 }
 
 
-static void todo_cmd_list(TodoList *list)
+static void todo_list(TodoList *list)
 {
-    char buffer[1024];
-    
-    printf("%-5s| %-24s %-32s %-10s %s\n", "No.", "Title", "Description", "Priority", "Deadline");
-    for (size_t i = 0, num = 1; i < list->size; i++)
+    if (list->size == 0)
     {
-    /*
-        // depreciated 
-        if (list->priority[i] == 0xCC)
-        {
-            continue;   
-        } 
-    */
-
-        strftime(buffer, 1024, "%x", localtime(&list->deadline[i]));
-        if (list->priority[i])
-        {
-            printf("%5llu| %-24s %-32s %-10llu %s\n", num++, list->title[i], list->desc[i], list->priority[i], buffer);
-        }
-        else
-        {
-            printf("%5llu| %-24s %-32s %-10s %s\n", num++, list->title[i], list->desc[i], "", buffer);
-        }
-    }
-    printf("\n");
-}
-
-static void todo_cmd_clear()
-{
-    char buffer[16];
-    printf("Are you sure about that? (Yes/no): ");
-    fgets(buffer, 16, stdin);
-    buffer[strcspn(buffer, "\n")] = 0;
-    if (strcmp(buffer, "Yes") == 0)
-    {
-        printf("Cleared Todos.\n");
-        remove("todo.todo");
-    }
-    else
-    {
-        printf("Aborting...\n");
-    }
-}
-
-static void todo_cmd_remove(TodoList *list)
-{
-    char buffer[32];
-    printf("\nEnter item number to remove: ");
-    fgets(buffer, 32, stdin);
-    buffer[strcspn(buffer, "\n")] = 0;
-
-    unsigned int index = 0;
-    index = strtoull(buffer, NULL, 0);
-
-    if (index == 0)
-    {
+        printf("No todos found :\'(\n");
         return;
     }
+    printf("%4s %-20s %-40s %-8s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
+    todo_tree_display(list, list->sortedList, todo_stream_display_sorted);    
+}
 
-    todo_stream_remove(list, index-1);
+/* TODO TREE COMPARE */
+static void todo_stream_display_sorted(TodoList *list, unsigned int index)
+{
+    char buffer[20];
+    strftime(buffer, 20, "%x", localtime(&list->deadline[index]));
+    printf("%4u %-20s %-40s %-8llu %-16s\n", index+1, list->title[index], list->desc[index], list->priority[index], buffer);
+}
+/* 
+todo list -p
+0    1    2
+*/
+static void todo_sorting_arg(TodoList *list, int argc, char *argv[])
+{
+    list->sortingFunc = todo_tree_defaultCompare;
+    if (argc > 2)
+    {
+        if (todo_cmdi("-p", 2) == 0)
+        {
+            GC_LOG("priority sort\n");
+            list->sortingFunc = todo_tree_priorityCompare;
+        }
+        else if (todo_cmdi("-d", 2) == 0)
+        {
+            GC_LOG("deadline sort\n");
+            list->sortingFunc = todo_tree_deadlineCompare;
+        }
+        else if (todo_cmdi("-c", 2) == 0)
+        {
+            GC_LOG("created sort\n");
+            list->sortingFunc = todo_tree_createdCompare;
+        }
+        else if (todo_cmdi("-t", 2) == 0)
+        {
+            GC_LOG("title sort\n");
+            list->sortingFunc = todo_tree_titleCompare;
+        }
+    }
+
+
 }
 /* 
 

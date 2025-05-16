@@ -3,26 +3,65 @@
 #include <stdlib.h>
 
 static GCBNode *gc_bst_node(void *value);
+static void gc_bst_free_internals(GCBRoot *root);
 
-void gc_bst_init(GCBRoot *root)
+GCBRoot *gc_bst_init()
 {
-    root->value = NULL;
-    root->left = NULL;
-    root->right = NULL;
+    return (GCBNode *) gc_bst_node(NULL);
+}
+
+void gc_bst_free(GCBRoot **root)
+{
+    gc_bst_free_internals(*root);
+    free(*root);
+    *root = NULL;
+}
+
+void gc_bst_free_internals(GCBRoot *root)
+{
+    if (root == NULL)
+    {
+        return;
+    }
+
+    if (root->left != NULL)
+    {
+        gc_bst_free_internals(root->left);
+        free(root->left);
+    }
+    
+    if (root->right != NULL)
+    {
+        gc_bst_free_internals(root->right);
+        free(root->right);
+    }
+}
+
+GCBNode *gc_bst_node(void *value)
+{
+    GCBNode *node = malloc(sizeof(GCBNode));
+    if (node == NULL)
+    {
+        return NULL;
+    }
+
+    node->value = value; 
+    node->left = NULL; 
+    node->right = NULL;
+    return node;
 }
 
 void gc_bst_push(GCBRoot *root, void *value, bstCmpFun compare)
 {
     if (root == NULL)
     {
-        root = value;
         return;
     }
     
     // + when a is bigger (return > 0) store to right
     // - when b is bigger (return < 0) store to left
     // 0 when equal (return == 0) store to left
-    GCBNode *node, *next;
+    GCBNode *node;
     for (node = root; node != NULL; )
     {
         if (node->value == NULL)
@@ -80,23 +119,3 @@ void gc_bst_display(GCBRoot *root, bstDispFun display)
     
 }
 
-/* 
-     a
-   b   e
-  c d f g
-
-*/
-
-GCBNode *gc_bst_node(void *value)
-{
-    GCBNode *node = malloc(sizeof(GCBNode));
-    if (node == NULL)
-    {
-        return NULL;
-    }
-
-    node->value = value; 
-    node->left = NULL; 
-    node->right = NULL;
-    return node;
-}

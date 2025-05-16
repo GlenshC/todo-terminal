@@ -21,6 +21,29 @@
         "functional": "c",
         "tuple": "c",
         "type_traits": "c",
-        "utility": "c"
+        "utility": "c",
+        "todo_tree.h": "c",
+        "types.h": "c",
+        "time.h": "c",
+        "todo.h": "c",
+        "gc_tokens.h": "c",
+        "todo_cmp.h": "c"
+    },
+    "C_Cpp.exclusionPolicy": "checkFilesAndFolders",
+    "C_Cpp.files.exclude": {
+        "**/.vscode": true,
+        "**/.vs": true
+    },
+    "files.exclude": {
+        "**/build": true,
+        "**/out": true,
+        "**/.vscode": true,
+        "**/.vs": true
+    },
+    "search.exclude": {
+        "**/build": true,
+        "**/out": true,
+        "**/.vscode": true,
+        "**/.vs": true
     }
 }

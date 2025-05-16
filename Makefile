@@ -34,8 +34,9 @@ BUILD_DIR := build
 # Source files (your code + glad/glfw if using source)
 C_SRC   := 	src/main.c \
 			src/todo.c \
-			src/stream.c
-
+			src/stream.c \
+			src/todo_tree.c \
+			src/todo_cmp.c
 CXX_SRC := 	
 
 # Object files for debug and release
