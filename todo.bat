@@ -1,2 +1,2 @@
 @echo off
-call build\release.exe %*
+call build\debug.exe %*

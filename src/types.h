@@ -1,7 +1,6 @@
 #ifndef TODO_TYPES_H
 #define TODO_TYPES_H
 
-#include <time.h>
 #include <stdint.h>
 
 typedef struct TNode{
@@ -28,8 +27,8 @@ typedef struct TodoT
     char *desc;
 
     size_t priority;
-    time_t created;
-    time_t deadline;
+    long long created;
+    long long deadline;
 } TodoT; // 56bytes - nopads
 
 struct DynamicTodoList;
@@ -43,16 +42,19 @@ typedef struct DynamicTodoList
     size_t capacity;
 
     size_t *titleSize;
-    char **title;
+    char **title; //editable
     
     size_t *descSize;
-    char **desc;
+    char **desc; // editable
 
-    size_t *priority;
-    time_t *created;
-    time_t *deadline;
-
+    long long *deadline; // editable
+    long long *created;
+    
+    uint8_t *priority; // editable
+    
     TRoot *sortedList;
+    
+    uint8_t isAccending; 
     todotreeCmpFun sortingFunc;
 } TodoList;
 

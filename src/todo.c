@@ -1,16 +1,15 @@
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <time.h>
+// #include <time.h>
 
 #include "gc_logs.h"
 #include "gc_tokens.h"
 #include "types.h"
 #include "stream.h"
-#include "todo_tree.h"
+#include "todo_cmd.h"
+
 #include "todo.h"
-#include "todo_cmp.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -18,7 +17,7 @@
 
 #ifdef GC_DEBUG
 #define GC_PERFORMANCE_TEST
-// #define GC_PERFORMANCE_ITERATIONS 1026
+// #define GC_PERFORMANCE_ITERATIONS 1024
 #endif
 /* 
     first add terminal functionality
@@ -36,23 +35,13 @@
 */
 
 //type macro
-#define TODO_MAX_TOKENS 32
 
 //macro
-#define targ_get(index, default) (((index) < argc) ? (argv[(index)]) : (default))
-#define todo_cmd(cmd) strcmp(argv[1], cmd)
-#define todo_cmdi(cmd, index) strcmp(argv[(index)], cmd)
-#define isbounded(val, start, end)   (start <= val && val <= end)
-#define isboundedx(val, start, end)   (start < val && val < end)
 
 static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
 static void todo_cmd_clear();
 static void todo_cmd_remove(TodoList *list);
-
-static void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority);
-static void todo_stream_display_sorted(TodoList *list, unsigned int index);
-static void todo_list(TodoList *list);
-static void todo_sorting_arg(TodoList *list, int argc, char *argv[]);
+static void todo_cmd_edit(TodoList *list);
 
 void todo_CLI(int argc, char *argv[])
 {
@@ -115,7 +104,12 @@ void todo_CLI(int argc, char *argv[])
         }
         else if (todo_cmd("edit") == 0)
         {
-            printf("edit\n"); // add
+            todo_sorting_arg(&list, argc, argv);
+            todo_stream_sort(&list, list.sortingFunc);
+            
+            todo_list(&list);    
+            todo_cmd_edit(&list);
+
         }
         else 
         {
@@ -136,7 +130,9 @@ void todo_CLI(int argc, char *argv[])
 #endif
 #endif
     todo_stream_write(&list);
-    todo_stream_free_todolist(&list);
+#ifdef GC_DEBUG
+    todo_stream_free_todolist(&list); // remove if you want faster exit
+#endif
 }
 
 void todo_GUI()
@@ -147,6 +143,37 @@ void todo_GUI()
 
 // 0    1    2     3    4  5        6  7
 // todo list -p
+
+static void todo_cmd_edit(TodoList *list)
+{
+    if (list == NULL)
+    {
+        return;
+    }
+
+    char buffer[32];
+    printf("\nEnter item ID to remove: ");
+    fgets(buffer, 32, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+
+    if (strcmp("q", buffer) == 0)
+    {
+        todo_stream_write(list);
+        exit(EXIT_SUCCESS);
+    }
+    
+    size_t index = 0;
+    index = strtoull(buffer, NULL, 0);
+
+    if (index == 0)
+    {
+        printf("Invalid ID.\n");
+        return;
+    }
+    
+    todo_edit(list, index-1);
+    printf("\n");
+}
 
 static void todo_cmd_clear()
 {
@@ -167,12 +194,18 @@ static void todo_cmd_clear()
 
 static void todo_cmd_remove(TodoList *list)
 {
+    if (list == NULL)
+    {
+        return;
+    }
+
     char buffer[32];
     printf("\nEnter item ID to remove: ");
     fgets(buffer, 32, stdin);
     buffer[strcspn(buffer, "\n")] = 0;
     if (strcmp("q", buffer) == 0)
     {
+        todo_stream_write(list);
         exit(EXIT_SUCCESS);
     }
     size_t index = 0;
@@ -229,123 +262,11 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
             description = nextarg;
         }
     }
-    
+
     todo_add(list, argv[ADD_ARG_TITLE], description, &date, priority);
 }
 
-static void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority)
-{
-    time_t raw_created = time(NULL);
-    time_t raw_deadline;
-    struct tm *created_tm = localtime(&raw_created);
-    struct tm deadline_tm = *created_tm;
 
-    if (priority > 5U)
-    {
-        priority = 5U;
-    }
-
-    int year_diff = (tododate->year) - (created_tm->tm_year + 1900);
-    int mon_diff = (tododate->month) - (created_tm->tm_mon + 1);
-    
-    if (year_diff > 0)
-    {
-        deadline_tm.tm_year = tododate->year - 1900;
-        deadline_tm.tm_mon = tododate->month - 1;
-        deadline_tm.tm_mday = tododate->day;
-    }
-    else if (year_diff == 0)
-    {
-        if (mon_diff > 0)
-        {
-            deadline_tm.tm_mon = tododate->month - 1;
-            deadline_tm.tm_mday = tododate->day;
-        }
-        else if (mon_diff == 0)
-        {
-            if (isbounded(tododate->day, (created_tm->tm_mday), 31))
-            {
-                deadline_tm.tm_mday = tododate->day;
-            }
-        }
-    }
-    raw_deadline = mktime(&deadline_tm);
-    
-    TodoT todotask = {};
-    
-    todotask.titleSize = strlen(title);
-    todotask.title = title;
-
-    if (description != NULL)
-    {
-        todotask.descSize = strlen(description);
-        todotask.desc = description;
-
-    } else 
-    {
-        todotask.descSize = 1;
-        todotask.desc = "\0";
-    }
-    
-    todotask.priority = priority;
-    todotask.created = raw_created;
-    todotask.deadline = raw_deadline;
-    
-    todo_stream_push(list, &todotask);
-}
-
-
-static void todo_list(TodoList *list)
-{
-    if (list->size == 0)
-    {
-        printf("No todos found :\'(\n");
-        return;
-    }
-    printf("%4s %-20s %-40s %-8s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
-    todo_tree_display(list, list->sortedList, todo_stream_display_sorted);    
-}
-
-/* TODO TREE COMPARE */
-static void todo_stream_display_sorted(TodoList *list, unsigned int index)
-{
-    char buffer[20];
-    strftime(buffer, 20, "%x", localtime(&list->deadline[index]));
-    printf("%4u %-20s %-40s %-8llu %-16s\n", index+1, list->title[index], list->desc[index], list->priority[index], buffer);
-}
-/* 
-todo list -p
-0    1    2
-*/
-static void todo_sorting_arg(TodoList *list, int argc, char *argv[])
-{
-    list->sortingFunc = todo_tree_defaultCompare;
-    if (argc > 2)
-    {
-        if (todo_cmdi("-p", 2) == 0)
-        {
-            GC_LOG("priority sort\n");
-            list->sortingFunc = todo_tree_priorityCompare;
-        }
-        else if (todo_cmdi("-d", 2) == 0)
-        {
-            GC_LOG("deadline sort\n");
-            list->sortingFunc = todo_tree_deadlineCompare;
-        }
-        else if (todo_cmdi("-c", 2) == 0)
-        {
-            GC_LOG("created sort\n");
-            list->sortingFunc = todo_tree_createdCompare;
-        }
-        else if (todo_cmdi("-t", 2) == 0)
-        {
-            GC_LOG("title sort\n");
-            list->sortingFunc = todo_tree_titleCompare;
-        }
-    }
-
-
-}
-/* 
-
-*/
+/* ===========================================
+    HELPER FUNCTIONS
+   ===========================================*/
