@@ -1,6 +1,20 @@
 #include "todo_cmp.h"
 #include <string.h>
 
+int todo_tree_priorityScoreCompare(TodoList *list, unsigned int a, unsigned int b)
+{
+    int assending = - 1 + 2 * list->isAccending;
+    if (list->priorityScore[a] < list->priorityScore[b])
+    {
+        return 1*assending;
+    }
+    else if (list->priorityScore[a] > list->priorityScore[b])
+    {
+        return -1*assending;
+    }    
+    return 0;
+}
+
 int todo_tree_priorityCompare(TodoList *list, unsigned int a, unsigned int b)
 {
     int assending = - 1 + 2 * list->isAccending;

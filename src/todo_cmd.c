@@ -18,15 +18,33 @@ static void todo_stream_display_sorted(TodoList *list, unsigned int index);
 static void todo_getinput(char *buffer, int maxCount);
 static void todo_time_str(char *buffer, size_t maxCount, time_t time);
 
+static pScore TODO_ENERGY_WEIGHTS[] = {
+    60,  30, 70, 30, // Low Energy
+    80,  70, 50, 10, // Med Energy
+    90, 100, 30,  0  // High Energy
+};
+
+static char *TODO_QUADRANTS[] = {
+    "Critical", //0
+    "Growth", //1
+    "Distraction", //2
+    "Waste" //3
+};
+
+static pScore todo_get_todopressure(time_t deadline, time_t today);
+static pScore todo_get_todoage(time_t created, time_t today);
+
+static uint32_t xorshift32(uint32_t *state) ; // random number generator
+
 void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority)
 {
     time_t raw_created = time(NULL);
-    time_t raw_deadline = todo_date_createtime(tododate, raw_created);
-
-    if (priority > 5U)
+    time_t raw_deadline = 0;
+    if (tododate != NULL)
     {
-        priority = 5U;
+        raw_deadline = todo_date_createtime(tododate, raw_created);
     }
+
     
     TodoT todotask = {};
     
@@ -59,7 +77,7 @@ void todo_list(TodoList *list)
         printf("No todos found :\'(\n");
         return;
     }
-    printf("%4s %-20s %-40s %-8s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
+    printf("%-4s %-20s %-40s %-15s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
     todo_tree_display(list, list->sortedList, todo_stream_display_sorted);    
 }
 
@@ -130,36 +148,160 @@ void todo_edit(TodoList *list, unsigned int index)
 void todo_sorting_arg(TodoList *list, int argc, char *argv[])
 {
     list->sortingFunc = todo_tree_defaultCompare;
-    if (argc > 2)
+    for (int i = 2; i < argc; i++)
     {
-        if (todo_cmdi("-p", 2) == 0)
+        if (argv[i][0] == '-' && argv[i][1] == '-')
         {
-            list->sortingFunc = todo_tree_priorityCompare;
+            if (todo_cmdi("--priority", i) == 0)
+            {
+                list->sortingFunc = todo_tree_priorityCompare;
+            }
+            else if (todo_cmdi("--best", i) == 0)
+            {
+                list->sortingFunc = todo_tree_priorityScoreCompare;
+            }
+            else if (todo_cmdi("--deadline", i) == 0)
+            {
+                list->sortingFunc = todo_tree_deadlineCompare;
+            }
+            else if (todo_cmdi("--created", i) == 0)
+            {
+                list->sortingFunc = todo_tree_createdCompare;
+            }
+            else if (todo_cmdi("--title", i) == 0)
+            {
+                list->sortingFunc = todo_tree_titleCompare;
+            }
         }
-        else if (todo_cmdi("-d", 2) == 0)
+        else if (argv[i][0] == '-')
         {
-            list->sortingFunc = todo_tree_deadlineCompare;
+            if (todo_cmdi("-p", i) == 0)
+            {
+                list->sortingFunc = todo_tree_priorityCompare;
+            }
+            else if (todo_cmdi("-b", i) == 0)
+            {
+                list->sortingFunc = todo_tree_priorityScoreCompare;
+            }
+            else if (todo_cmdi("-d", i) == 0)
+            {
+                list->sortingFunc = todo_tree_deadlineCompare;
+            }
+            else if (todo_cmdi("-c", i) == 0)
+            {
+                list->sortingFunc = todo_tree_createdCompare;
+            }
+            else if (todo_cmdi("-t", i) == 0)
+            {
+                list->sortingFunc = todo_tree_titleCompare;
+            }
         }
-        else if (todo_cmdi("-c", 2) == 0)
-        {
-            list->sortingFunc = todo_tree_createdCompare;
-        }
-        else if (todo_cmdi("-t", 2) == 0)
-        {
-            list->sortingFunc = todo_tree_titleCompare;
-        }
+        
+    }
+
+}
+
+time_t todo_get_timeToday(void)
+{
+    return time(NULL);
+}
+
+
+void todo_get_randomAction(TodoList *list)
+{
+    uint32_t timeToday = (uint32_t)todo_get_timeToday();
+    uint32_t randomNumber = xorshift32(&timeToday) % (TODO_STREAM_MAX_TODOS * 2);
+
+    uint32_t index = 0;
+    for (uint32_t i = 0; randomNumber > 0; i++)
+    {
+        index = i%(list->size);
+        randomNumber -= list->priorityScore[index];
+    }
+
+    todo_stream_display_sorted(list, index);
+}
+
+void todo_get_bestAction(TodoList *list)
+{
+    unsigned int index = todo_tree_at(list, list->sortedList, 0);
+    printf("%-4s %-20s %-40s %-15s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
+    todo_stream_display_sorted(list, index);
+}
+
+/* ===========================================
+    PRIORITY SCORE
+   ===========================================*/
+
+void todo_compute_priorityScores(TodoList *list)
+{
+    pScore *scoreTable = todo_get_todouserenergy();
+    time_t timeToday = time(NULL);
+    for (size_t i = 0; i < list->size; i++)
+    {
+        list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
     }
 }
 
+pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreTable, time_t timeToday)
+{
+
+    pScore score = scoreTable[list->priority[index]];
+    if (list->deadline[index])
+    {
+        score += todo_get_todopressure(list->deadline[index], timeToday);
+    }
+    score += todo_get_todoage(list->created[index], timeToday);
+
+    return score;
+}
+
+pScore *todo_get_todouserenergy(void)
+{
+    char buffer[20];
+    printf("Enter energy levels? (1 - LOW, 2 - MEDIUM, 3 - HIGH): ");
+    todo_getinput(buffer, 20);
+    uint32_t energy = strtoul(buffer, NULL, 0);
+
+    switch(energy)
+    {
+        case 1: // low
+        {
+            return TODO_ENERGY_WEIGHTS;
+        }
+        case 2: // med
+        {
+            return TODO_ENERGY_WEIGHTS + 4;
+        }
+        default:
+            return TODO_ENERGY_WEIGHTS + 8;
+    }
+}
 
 /* ===========================================
     HELPER FUNCTIONS
    ===========================================*/
+//
+
+static uint32_t xorshift32(uint32_t *state) 
+{
+    uint32_t x = *state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return *state = x;
+}
+
+
+
 static void todo_stream_display_sorted(TodoList *list, unsigned int index)
 {
-    char buffer[20];
-    todo_time_str(buffer, 20, list->deadline[index]);
-    printf("%4u %-20s %-40s %-8hhu %-16s\n", index+1, list->title[index], list->desc[index], list->priority[index], buffer);
+    char buffer[20] = {};
+    if (list->deadline[index])
+    {
+        todo_time_str(buffer, 20, list->deadline[index]);
+    }
+    printf("%4u %-20s %-40s %-15s %-16s\n", index+1, list->title[index], list->desc[index], TODO_QUADRANTS[list->priority[index]], buffer);
 }
 
 static void todo_getinput(char *buffer, int maxCount)
@@ -209,3 +351,32 @@ static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw)
     }
     return mktime(&result_tm);
 }
+
+
+static pScore todo_get_todopressure(time_t deadline, time_t today)
+{
+    time_t timeLeft = (deadline - today) / (60*60);
+    if (timeLeft < 1)
+        return 50;
+    else if (timeLeft < 6)
+        return 30;
+    else if (timeLeft < 24)
+        return 20;
+    else if (timeLeft < 72)
+        return 10;
+    
+    return 0;
+}
+
+static pScore todo_get_todoage(time_t created, time_t today)
+{
+    time_t ageDay = (created - today) / (24*60*60);
+    if (ageDay > 7)
+        return 10;    
+    else if (ageDay > 30)
+        return 20;
+    
+    return 0;
+}
+
+/*  */

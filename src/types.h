@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+typedef uint8_t pScore;
+
 typedef struct TNode{
     unsigned int value;
     uint16_t valid;
@@ -38,27 +40,36 @@ typedef void (*todotreeDispFun)(struct DynamicTodoList *list, unsigned int value
 
 typedef struct DynamicTodoList
 {
-    size_t size;
-    size_t capacity;
-
+    
+    /* Writeable */
+    size_t size; 
+    
     size_t *titleSize;
     char **title; //editable
     
     size_t *descSize;
     char **desc; // editable
-
     long long *deadline; // editable
     long long *created;
+    uint8_t *priority;
     
-    uint8_t *priority; // editable
     
+    /* Runtime Data */
+    size_t capacity;
+    pScore *priorityScore;
+
     TRoot *sortedList;
-    
-    uint8_t isAccending; 
     todotreeCmpFun sortingFunc;
+    uint8_t isAccending; 
 } TodoList;
 
-
+/*
+    Priority
+    0 = urgent important (Critical)
+    1 = not urgent important (Growth)
+    2 = urgent not important (Distraction)
+    3 = not urgent not important (Waste)
+    */
 
 
 typedef enum {

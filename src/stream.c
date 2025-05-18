@@ -7,6 +7,7 @@
 #include "gc_logs.h"
 #include "todo_tree.h"
 #include "todo_cmp.h"
+#include "todo_cmd.h"
 
 
 #define gc_binceil64(x) (--(x), (x) |= (x) >> 1, (x) |= (x) >> 2, (x) |= (x) >> 4, (x) |= (x) >> 8, (x) |= (x) >> 16, (x) |= (x) >> 32, ++(x))
@@ -166,7 +167,7 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     fread(deadline, sizeof(*todolist->deadline), size, readwrite);
 
     fclose(readwrite);
-    todo_stream_sort(todolist, todolist->sortingFunc);
+    // todo_stream_sort(todolist);
 
     return 0;
 }
@@ -234,7 +235,12 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     {
         return 1;
     }
-
+    list->priorityScore = malloc(sizeof(*list->priorityScore)*capacity);
+    if (list->priorityScore == NULL)
+    {
+        return 1;
+    }
+    
     list->sortedList = NULL;
     list->isAccending = 1;
     list->sortingFunc = todo_tree_defaultCompare;
@@ -453,8 +459,9 @@ void todo_stream_free_todolist(TodoList *todolist) // capacity update
     todolist->sortedList = NULL;
 }
 
-void todo_stream_sort(TodoList *list, todotreeCmpFun compare)
+void todo_stream_sort(TodoList *list)
 {
+    todotreeCmpFun compare = list->sortingFunc;
     if (compare == NULL)
     {
         return;
@@ -463,15 +470,55 @@ void todo_stream_sort(TodoList *list, todotreeCmpFun compare)
     {
         todo_tree_free(&list->sortedList);
     }
-    
+
     TRoot *root = todo_tree_init();
     list->sortedList = root;
-
     size_t size = list->size;
+
+    if (compare == todo_tree_priorityScoreCompare)
+    {
+        pScore *scoreTable = todo_get_todouserenergy();
+        time_t timeToday = todo_get_timeToday();
+        for (size_t i =0; i < size; i++)
+        {
+            todo_get_priorityScore(list, i, scoreTable, timeToday);
+            todo_tree_push(list, root, i, compare);
+        }
+    }
+    else
+    {
+        for (size_t i =0; i < size; i++)
+        {
+            todo_tree_push(list, root, i, compare);
+        }
+    }    
+    
+
+}
+
+void todo_stream_priorityScoreSort(TodoList *list)
+{
+    list->sortingFunc = todo_tree_priorityScoreCompare;
+    todotreeCmpFun compare = list->sortingFunc;
+
+    if (list->sortedList != NULL)
+    {
+        todo_tree_free(&list->sortedList);
+    }
+
+    TRoot *root = todo_tree_init();
+    list->sortedList = root;
+    size_t size = list->size;
+
+    time_t timeToday = todo_get_timeToday();
+    pScore *scoreTable = todo_get_todouserenergy();
     for (size_t i =0; i < size; i++)
     {
+        list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
+        
         todo_tree_push(list, root, i, compare);
     }
+
 }
 
 /* ==============================

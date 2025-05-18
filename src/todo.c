@@ -4,6 +4,7 @@
 // #include <time.h>
 
 #include "gc_logs.h"
+#include "gc_string.h"
 #include "gc_tokens.h"
 #include "types.h"
 #include "stream.h"
@@ -42,6 +43,7 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
 static void todo_cmd_clear();
 static void todo_cmd_remove(TodoList *list);
 static void todo_cmd_edit(TodoList *list);
+static void todo_cmd_get(TodoList *list, int israndom);
 
 void todo_CLI(int argc, char *argv[])
 {
@@ -59,7 +61,6 @@ void todo_CLI(int argc, char *argv[])
     }
 
     todo_stream_read(&list);
-
 
 #ifdef GC_PERFORMANCE_TEST
 #ifdef _WIN32
@@ -86,7 +87,7 @@ void todo_CLI(int argc, char *argv[])
         else if (todo_cmd("rm") == 0)
         {
             todo_sorting_arg(&list, argc, argv);
-            todo_stream_sort(&list, list.sortingFunc);
+            todo_stream_sort(&list);
 
             todo_list(&list);
             todo_cmd_remove(&list);
@@ -94,22 +95,23 @@ void todo_CLI(int argc, char *argv[])
         else if (todo_cmd("list") == 0)
         {
             todo_sorting_arg(&list, argc, argv);
-            todo_stream_sort(&list, list.sortingFunc);
+            todo_stream_sort(&list);
 
             todo_list(&list);    
         }
         else if (todo_cmd("get") == 0)
-        {
-            printf("get\n"); // add
+        {            
+            todo_stream_priorityScoreSort(&list);
+
+            todo_cmd_get(&list, 0);
         }
         else if (todo_cmd("edit") == 0)
         {
             todo_sorting_arg(&list, argc, argv);
-            todo_stream_sort(&list, list.sortingFunc);
+            todo_stream_sort(&list);
             
             todo_list(&list);    
             todo_cmd_edit(&list);
-
         }
         else 
         {
@@ -229,6 +231,7 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
 
     char *description = NULL;
     TodoDate date = {};
+    TodoDate *dateptr = NULL;
     unsigned int priority = 0;
 
     if (targ_get(ADD_ARG_TITLE, NULL) == NULL)
@@ -238,17 +241,13 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
     }
     
     
-    for (int i = 3; i < argc; i+=2)
+    for (int i = 3; i < argc; i++)
     {
         char *nextarg = targ_get(i+1, NULL);
-        if (nextarg == NULL)
-        {
-            GC_LOG("wrong usage");
-            exit(EXIT_FAILURE);
-        }
 
         if(todo_cmdi("-t", i) == 0)
         {
+            dateptr = &date;
             gc_tokenize(nextarg, "/", argtokens, TODO_MAX_TOKENS);
             date.day    = (int)strtoul(argtokens[0], NULL, 0);
             date.month  = (int)strtoul(argtokens[1], NULL, 0);
@@ -256,16 +255,63 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
         }
         else if(todo_cmdi("-p", i) == 0)
         {
-            priority = strtoul(nextarg, NULL, 0);            
+            if (isdigit(nextarg[0]))
+            {
+                priority = strtoul(nextarg, NULL, 0);
+                if (priority == 0)
+                {
+                    priority = 1;
+                }
+                else {
+                    priority -= 1;
+                }
+            }
+            else
+            {
+                if (gc_str_partialMatch("critical", nextarg) == 0)
+                {
+                    priority = 0;
+                }
+                else if (gc_str_partialMatch("growth", nextarg) == 0)
+                {
+                    priority = 1;
+                }
+                else if (gc_str_partialMatch("distraction", nextarg) == 0)
+                {
+                    priority = 2;
+                }
+                else if (gc_str_partialMatch("waste", nextarg) == 0)
+                {
+                    priority = 3;
+                }
+            }
         }else if(todo_cmdi("-d",i) == 0)
         {
             description = nextarg;
         }
     }
+    // 1 2 3 4
+    // 0 1 2 3
 
-    todo_add(list, argv[ADD_ARG_TITLE], description, &date, priority);
+    todo_add(list, argv[ADD_ARG_TITLE], description, dateptr, priority);
 }
 
+static void todo_cmd_get(TodoList *list, int israndom)
+{
+
+    if (israndom)
+    {
+        todo_get_randomAction(list);
+    }
+    else
+    {
+        todo_get_bestAction(list);
+    }
+
+}
+/* 
+    urgent? important? remove first
+*/
 
 /* ===========================================
     HELPER FUNCTIONS

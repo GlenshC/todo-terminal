@@ -98,6 +98,68 @@ size_t GC_STR_GetLastChar_internals(const char *str, const char c, unsigned int 
     return index;
 }
 
+#define ctolower(ch) ((ch) >= 'A' && (ch) <= 'Z') ? (ch + 32) : (ch)
+int gc_str_strcmp(const char *str1, const char *str2)
+{
+    char a, b;
+    if (str1 == NULL)
+    {
+        if (str2 == NULL)
+        {
+            return 0;
+        }
+        return -1;
+    }
+    else if (str2 == NULL)
+    {
+        return 1;
+    }
+
+    while (*str1 && *str2)
+    {
+        a = ctolower(*str1), b = ctolower(*str2);
+        if (a != b) {
+            return a-b;
+        }
+        str1++;
+        str2++;
+    }
+    return 0;
+}
+
+int gc_str_partialMatch(const char *str1, const char *str2)
+{
+    char a, b;
+
+    if (str1 == NULL)
+    {
+        if (str2 == NULL)
+        {
+            return 0;
+        }
+        return -1;
+    }
+    else if (str2 == NULL)
+    {
+        return 1;
+    }
+
+    while (*str1 && *str2)
+    {
+        a = ctolower(*str1), b = ctolower(*str2);
+        if (a == b) {
+            return 0;
+        }
+        else if (a != b)
+        {
+            return a-b;
+        }
+        str1++;
+        str2++;
+    }
+    return a-b;
+
+}
 
 /* Implement read batch of file (malloc a batch of file)
 G_String *G_ReadMultipleFiles(const char** paths, int n);

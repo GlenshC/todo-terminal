@@ -7,7 +7,7 @@ static TNode *todo_tree_node(void);
 static void todo_tree_free_internals(TRoot *root);
 static void todo_tree_display_internals(TodoList *list, TRoot *root, todotreeDispFun display, unsigned int *index);
 static void todo_tree_pushNode(TodoList *list, TRoot *root, TNode *node, todotreeCmpFun compare);
-
+static unsigned int todo_tree_at_internals(TodoList *list, TRoot *root, unsigned int index, unsigned int *countIndex);
 
 TRoot *todo_tree_init()
 {
@@ -67,6 +67,7 @@ void todo_tree_push(TodoList *list, TRoot *root, unsigned int value, todotreeCmp
             node = node->right;
         }
     }
+    
 }
 
 void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare)
@@ -224,7 +225,45 @@ static void todo_tree_display_internals(TodoList *list, TRoot *root, todotreeDis
     {
         todo_tree_display_internals(list, root->right, display, index);
     }
+}
+
+unsigned int todo_tree_at(TodoList *list, TRoot *root, unsigned int index)
+{
+    unsigned int countIndex = 0;
+    if (index >= list->size)
+    {
+        GC_LOG("Beyond bounds.\n");
+        return 0;
+    }
     
+    return todo_tree_at_internals(list, root, index, &countIndex);
+}
+
+static unsigned int todo_tree_at_internals(TodoList *list, TRoot *root, unsigned int index, unsigned int *countIndex)
+{
+    if (root == NULL || !(root->valid))
+    {
+        GC_LOG("Not found.\n");
+        return 0;
+    }
+
+    if (root->left != NULL)
+    {
+        return todo_tree_at_internals(list, root->left, index, countIndex);
+    }
+    
+    if (*countIndex == index)
+    {
+        printf("Found.\n");
+        return root->value;
+    }
+    (*countIndex)++;
+    
+    if (root->right != NULL)
+    {
+        return todo_tree_at_internals(list, root->right, index, countIndex);
+    }
+    return 0;
 }
 
 //
