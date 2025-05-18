@@ -60,6 +60,7 @@ typedef struct DynamicTodoList
 
     TRoot *sortedList;
     todotreeCmpFun sortingFunc;
+    long long timeToday;
     uint8_t isAccending; 
 } TodoList;
 

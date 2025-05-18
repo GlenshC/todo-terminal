@@ -9,14 +9,18 @@
 #include "stream.h"
 #include "todo_cmp.h"
 #include "todo_tree.h"
+#include "terminal_colors.h"
 
 #include "todo_cmd.h"
 
+#define todo_display_table_header() printf("%-4s  %-20s %-40s %-15s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline")
 
 static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw);
 static void todo_stream_display_sorted(TodoList *list, unsigned int index);
 static void todo_getinput(char *buffer, int maxCount);
 static void todo_time_str(char *buffer, size_t maxCount, time_t time);
+static void todo_display_table_list(TodoList *list);
+static unsigned int todo_get_deadlineColor(time_t deadline, time_t today);
 
 static pScore TODO_ENERGY_WEIGHTS[] = {
     60,  30, 70, 30, // Low Energy
@@ -24,11 +28,23 @@ static pScore TODO_ENERGY_WEIGHTS[] = {
     90, 100, 30,  0  // High Energy
 };
 
+static char *TODO_QUADRANTS_COLOR[] = {
+    TERMINAL_BOLD_RED,
+    TERMINAL_BOLD_GREEN,
+    TERMINAL_BOLD_BLUE,
+    TERMINAL_BOLD_GRAY,
+};
+
 static char *TODO_QUADRANTS[] = {
-    "Critical", //0
-    "Growth", //1
-    "Distraction", //2
-    "Waste" //3
+    "Critical",     // Red Bold
+    "Growth",       // Green Bold
+    "Distraction",  // Blue Bold
+    "Waste"         // Bright Gray Bold
+};
+
+static int TODO_DEADLINE_COLOR[] = {
+/*    6   12   24   48   72  120  168 */
+    196, 202, 208, 214, 220, 226, 229, 250
 };
 
 static pScore todo_get_todopressure(time_t deadline, time_t today);
@@ -77,9 +93,10 @@ void todo_list(TodoList *list)
         printf("No todos found :\'(\n");
         return;
     }
-    printf("%-4s %-20s %-40s %-15s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
-    todo_tree_display(list, list->sortedList, todo_stream_display_sorted);    
+    todo_display_table_list(list);
 }
+
+
 
 #define emptyBuffer(buf) (buf[0] = '\0')
 #define isempty(buffer) (buffer[0] == 0)
@@ -140,7 +157,7 @@ void todo_edit(TodoList *list, unsigned int index)
         date.month  = (int)strtoul(argtokens[1], NULL, 0);
         date.year   = (int)strtoul(argtokens[2], NULL, 0);
 
-        list->deadline[index] = todo_date_createtime(&date, list->created[index]);
+        list->deadline[index] = todo_date_createtime(&date, list->timeToday);
     }
 }
 
@@ -226,7 +243,6 @@ void todo_get_randomAction(TodoList *list)
 void todo_get_bestAction(TodoList *list)
 {
     unsigned int index = todo_tree_at(list, list->sortedList, 0);
-    printf("%-4s %-20s %-40s %-15s %-16s\n", "ID", "Title", "Description", "Priority", "Deadline");
     todo_stream_display_sorted(list, index);
 }
 
@@ -305,7 +321,12 @@ static void todo_stream_display_sorted(TodoList *list, unsigned int index)
     {
         todo_time_str(buffer, 20, list->deadline[index]);
     }
-    printf("%4u %-20s %-40s %-15s %-16s\n", index+1, list->title[index], list->desc[index], TODO_QUADRANTS[list->priority[index]], buffer);
+    printf(
+        "%4u  %s%-20s" TERMINAL_COLOR_RESET " %-40s %s%-15s" TERMINAL_COLOR_RESET " \x1b[38;5;%dm%-16s\n" TERMINAL_COLOR_RESET, 
+        index+1, 
+        TODO_QUADRANTS_COLOR[list->priority[index]], list->title[index], list->desc[index], 
+        TODO_QUADRANTS_COLOR[list->priority[index]], TODO_QUADRANTS[list->priority[index]], 
+        TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], buffer);
 }
 
 static void todo_getinput(char *buffer, int maxCount)
@@ -353,13 +374,16 @@ static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw)
             }
         }
     }
+    result_tm.tm_min = 0;
+    result_tm.tm_sec = 0;
+    result_tm.tm_hour = 0;
     return mktime(&result_tm);
 }
 
 
 static pScore todo_get_todopressure(time_t deadline, time_t today)
 {
-    time_t timeLeft = (deadline - today) / (60*60);
+    int timeLeft = (deadline - today) / (60*60);
     if (timeLeft < 1)
         return 50;
     else if (timeLeft < 6)
@@ -371,6 +395,26 @@ static pScore todo_get_todopressure(time_t deadline, time_t today)
     
     return 0;
 }
+static unsigned int todo_get_deadlineColor(time_t deadline, time_t today)
+{
+/*    6   12   24   48   72  120  168 */
+    int timeLeft = (deadline - today) / (60*60);
+    if (timeLeft < 6)
+        return 0;
+    else if (timeLeft < 12)
+        return 1;
+    else if (timeLeft < 24)
+        return 2;
+    else if (timeLeft < 72)
+        return 3;
+    else if (timeLeft < 120)
+        return 4;
+    else if (timeLeft < 168)
+        return 5;
+
+    return 6;
+    
+} // 1970
 
 static pScore todo_get_todoage(time_t created, time_t today)
 {
@@ -383,4 +427,9 @@ static pScore todo_get_todoage(time_t created, time_t today)
     return 0;
 }
 
+static void todo_display_table_list(TodoList *list)
+{
+    todo_display_table_header();
+    todo_tree_display(list, list->sortedList, todo_stream_display_sorted); 
+}  
 /*  */

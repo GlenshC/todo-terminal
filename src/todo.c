@@ -9,6 +9,8 @@
 #include "types.h"
 #include "stream.h"
 #include "todo_cmd.h"
+#include "commands.h"
+#include "terminal_colors.h"
 
 #include "todo.h"
 
@@ -17,7 +19,7 @@
 #endif
 
 #ifdef GC_DEBUG
-#define GC_PERFORMANCE_TEST
+// #define GC_PERFORMANCE_TEST
 // #define GC_PERFORMANCE_ITERATIONS 1024
 #endif
 /* 
@@ -35,9 +37,6 @@
     todo clear
 */
 
-//type macro
-
-//macro
 
 static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
 static void todo_cmd_clear(int argc, char *argv[]);
@@ -50,6 +49,11 @@ void todo_CLI(int argc, char *argv[])
 {
     TodoList list = {};
 
+    if (argc < 2)
+    {
+        printf(TERMINAL_COLOR_RED "Missing command. Type `todo help` for available commands.\n" TERMINAL_COLOR_RESET);
+    }
+
     if (todo_cmd("clear") == 0)
     {
         todo_cmd_clear(argc, argv);
@@ -57,7 +61,7 @@ void todo_CLI(int argc, char *argv[])
     }
     else if (todo_cmd("help") == 0)
     {
-        todo_help();
+        todo_help(argc, argv);
         return;
     }
 
@@ -122,15 +126,16 @@ void todo_CLI(int argc, char *argv[])
         }
         else 
         {
-            printf("Wrong Usage\n");
+            todo_help_error(argv[1]);
         }
     }
+
 
 #ifdef GC_PERFORMANCE_TEST
 #ifdef _WIN32
     QueryPerformanceCounter(&end);
     double elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
-    printf("Elapsed time: %lf seconds\n", elapsed);
+    printf(TERMINAL_COLOR_BLUE "\nElapsed time: %lf seconds\n" TERMINAL_COLOR_RESET, elapsed);
 #else
     end = clock();
 
@@ -176,7 +181,7 @@ static void todo_cmd_edit(TodoList *list)
 
     if (index == 0)
     {
-        printf("Invalid ID.\n");
+        printf(TERMINAL_COLOR_RED "Invalid ID.\n" TERMINAL_COLOR_RESET);
         return;
     }
     
@@ -189,7 +194,7 @@ static void todo_cmd_clear(int argc, char *argv[])
     // 1    2      3
     // 0    1      2
     // todo clear --force
-    if (argc > 2){
+    if (argc == 3){
         if (argv[2][0] == '-' && argv[2][1] == '-')
         {
             if (gc_str_strcmp("--force", argv[2]) == 0)
@@ -198,7 +203,13 @@ static void todo_cmd_clear(int argc, char *argv[])
                 return;
             }
         }
+        else
+        {
+            todo_help_command(COMMAND_CLEAR);
+            exit(EXIT_FAILURE);
+        }
     }
+    
     char buffer[16];
 
     printf("Are you sure? [Yes/no]: ");
@@ -207,11 +218,11 @@ static void todo_cmd_clear(int argc, char *argv[])
     if (strcmp(buffer, "Yes") == 0)
     {
         remove("todo.todo");
-        printf("Cleared Todos.\n");
+        printf(TERMINAL_COLOR_GREEN "Cleared Todos.\n" TERMINAL_COLOR_RESET);
     }
     else
     {
-        printf("Aborting...\n");
+        printf(TERMINAL_COLOR_RED "Aborting...\n" TERMINAL_COLOR_RESET);
     }
 }
 
@@ -257,7 +268,7 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
 
     if (targ_get(ADD_ARG_TITLE, NULL) == NULL)
     {
-        //todo_help("add"); // implement
+        todo_help_command(COMMAND_ADD);
         exit(EXIT_FAILURE);
     }
     
@@ -266,7 +277,7 @@ static void todo_cmd_add(TodoList *list, int argc, char *argv[])
     {
         char *nextarg = targ_get(i+1, NULL);
 
-        if(todo_cmdi("-t", i) == 0)
+        if(todo_cmdi("-D", i) == 0)
         {
             dateptr = &date;
             gc_tokenize(nextarg, "/", argtokens, TODO_MAX_TOKENS);
@@ -356,12 +367,6 @@ static unsigned int todo_get_args(int argc, char *argv[])
         }
     }
     return 0;
-}
-
-
-void todo_help(void)
-{
-
 }
 /* 
     urgent? important? remove first

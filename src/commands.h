@@ -1,21 +1,22 @@
 #ifndef TODO_COMMANDS_INTERFACE_H
 #define TODO_COMMANDS_INTERFACE_H
 
-#include "types.h"
-typedef struct {
-    const char* short_flag;
-    const char* long_flag;
-    const char* description;
-} Option;
+typedef enum TodoCommandsEnum {
+    COMMAND_ADD,
+    COMMAND_CLEAR,
+    COMMAND_EDIT,
+    COMMAND_GET,
+    COMMAND_HELP,
+    COMMAND_LIST,
+    COMMAND_RANDOM,
+    COMMAND_REMOVE,
+    COMMAND_VERSION,
+    COMMAND_VIEW,
+} TodoCommandsEnum;
 
-typedef struct {
-    const char* name;
-    const char* description;
-    const char* usage;
-    const char* arguments;
-    const char* examples;
-    Option* options;
-    int option_count;
-} Command;
+void todo_help(int argc, char *argv[]);
+void todo_help_all(void);
+void todo_help_command(TodoCommandsEnum cmdEnum);
+void todo_help_error(const char *cmdStr);
 
 #endif

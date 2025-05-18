@@ -38,6 +38,7 @@ C_SRC   := 	src/main.c \
 			src/todo_tree.c \
 			src/todo_cmp.c \
 			src/todo_cmd.c \
+			src/commands.c \
 			include/gc_string.c \
 			include/gc_tokens.c
 CXX_SRC := 	

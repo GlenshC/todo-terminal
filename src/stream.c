@@ -243,6 +243,7 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     
     list->sortedList = NULL;
     list->isAccending = 1;
+    list->timeToday = todo_get_timeToday();
     list->sortingFunc = todo_tree_defaultCompare;
 
     return 0;
