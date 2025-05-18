@@ -40,10 +40,11 @@
 //macro
 
 static void todo_cmd_add(TodoList *list, int argc, char *argv[]);
-static void todo_cmd_clear();
+static void todo_cmd_clear(int argc, char *argv[]);
 static void todo_cmd_remove(TodoList *list);
 static void todo_cmd_edit(TodoList *list);
 static void todo_cmd_get(TodoList *list, int israndom);
+static unsigned int todo_get_args(int argc, char *argv[]);
 
 void todo_CLI(int argc, char *argv[])
 {
@@ -51,12 +52,12 @@ void todo_CLI(int argc, char *argv[])
 
     if (todo_cmd("clear") == 0)
     {
-        todo_cmd_clear();
+        todo_cmd_clear(argc, argv);
         return;
     }
     else if (todo_cmd("help") == 0)
     {
-        printf("help\n"); // add
+        todo_help();
         return;
     }
 
@@ -100,10 +101,16 @@ void todo_CLI(int argc, char *argv[])
             todo_list(&list);    
         }
         else if (todo_cmd("get") == 0)
-        {            
-            todo_stream_priorityScoreSort(&list);
-
+        {
+            todo_stream_priorityScoreSort(&list, todo_get_args(argc, argv));
+            
             todo_cmd_get(&list, 0);
+        }
+        else if (todo_cmd("random") == 0)
+        {            
+            todo_stream_priorityScoreSort(&list, todo_get_args(argc, argv));
+
+            todo_cmd_get(&list, 1);
         }
         else if (todo_cmd("edit") == 0)
         {
@@ -177,10 +184,24 @@ static void todo_cmd_edit(TodoList *list)
     printf("\n");
 }
 
-static void todo_cmd_clear()
-{
+static void todo_cmd_clear(int argc, char *argv[])
+{   
+    // 1    2      3
+    // 0    1      2
+    // todo clear --force
+    if (argc > 2){
+        if (argv[2][0] == '-' && argv[2][1] == '-')
+        {
+            if (gc_str_strcmp("--force", argv[2]) == 0)
+            {
+                remove("todo.todo");
+                return;
+            }
+        }
+    }
     char buffer[16];
-    printf("Are you sure about that? (Yes/no): ");
+
+    printf("Are you sure? [Yes/no]: ");
     fgets(buffer, 16, stdin);
     buffer[strcspn(buffer, "\n")] = 0;
     if (strcmp(buffer, "Yes") == 0)
@@ -307,6 +328,39 @@ static void todo_cmd_get(TodoList *list, int israndom)
     {
         todo_get_bestAction(list);
     }
+
+}
+
+static unsigned int todo_get_args(int argc, char *argv[])
+{
+    if (argc > 2)
+    {
+        if (isdigit(argv[2][0]))
+        {
+            return strtoul(argv[2], NULL, 0);
+        }
+        else
+        {
+            if (gc_str_partialMatch("high", argv[2]) == 0)
+            {
+                return 3;
+            }
+            else if (gc_str_partialMatch("medium", argv[2]) == 0)
+            {
+                return 2;
+            }
+            else if (gc_str_partialMatch("low", argv[2]) == 0)
+            {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+
+void todo_help(void)
+{
 
 }
 /* 

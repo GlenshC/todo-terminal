@@ -16,6 +16,6 @@ int todo_stream_grow(TodoList *list, size_t newCapacity);
 int todo_stream_push(TodoList *list, TodoT *todo);
 int todo_stream_remove(TodoList *list, size_t index);
 void todo_stream_sort(TodoList *list);
-void todo_stream_priorityScoreSort(TodoList *list);
+void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy);
 
 #endif // GC_TODO_STREAM_H included

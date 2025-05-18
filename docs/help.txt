@@ -1,0 +1,130 @@
+For more information on a specific command, type:
+  todo help [COMMAND]
+
+Usage:
+  todo [COMMAND] [ARGS]
+
+Commands:
+  add       Adds a new todo
+  clear     Empties the todo list
+  edit      Edits an existing todo item
+  get       Suggests the best action to do next
+  help      Shows this help message and exits
+  list      Shows all todos and exits
+  random    Suggests a random action to do next
+  rm        Removes a todo
+  version   Shows the version information
+  view      Views detailed information of a todo
+
+----------------------------------
+Usage:
+  todo add <title> [OPTIONS]
+
+Adds a new todo item with optional metadata.
+
+Positional Arguments:
+  title                         Title of the todo item
+
+Options:
+  -d, --description <text>      Description of the todo item
+  -D, --deadline <DD/MM/YYYY>   Deadline (must be a future date)
+  -p, --priority <level|1-4>    Priority level:
+                                  1 - critical
+                                  2 - growth (default)
+                                  3 - distraction
+                                  4 - waste
+
+Examples:
+  todo add "Read book"
+  todo add "Finish project" -d "Due next week" -D 25/05/2025 -p critical
+  todo add "Scroll Instagram" -p 4
+----------------------------------
+Usage:
+  todo clear [OPTIONS]
+
+Empties the todo list.
+
+Options:
+  --force    Skips the confirmation prompt ("Are you sure? [yes/no]")
+----------------------------------
+Usage:
+  todo edit [id]
+
+Edits a todo item. If an id is provided, edits that item directly; otherwise, shows the todo list for selection.
+
+Positional Arguments:
+  id                         (Optional) ID of the todo item to edit
+----------------------------------
+Usage:
+  todo get [energy]
+
+Selects the most important task to do next, based on deadlines,
+priority, and your energy level. Waste tasks may still be selected
+when energy is low, but only if they are the most appropriate option.
+
+Arguments:
+  energy                   (optional) Your current energy level.
+                           If omitted, you will be prompted to enter it.
+                           Possible values:
+                             1 - low
+                             2 - medium
+                             3 - high
+----------------------------------
+Usage:
+  todo help [command]
+
+Shows general help or detailed help for a specific command.
+
+Arguments:
+  command                  (optional) The command to get help for.
+                           If omitted, displays this general help message.
+
+Examples:
+  todo help
+  todo help add
+----------------------------------
+Usage:
+  todo list [OPTIONS]
+
+Shows all todos and exits.
+
+Options:
+  -t, --title       Sorts todos alphabetically by title
+  -D, --deadline    Sorts todos by deadline: overdue first, then soonest, then farthest
+  -p, --priority    Sorts todos by priority: critical, growth, distraction, waste
+  -c, --created     Sorts todos by creation time (oldest first)
+  -b, --best        Sorts todos by recommended action priority
+----------------------------------
+Usage:
+  todo random [energy]
+
+Selects a task to do with some randomness. Critical, growth, and
+distraction tasks are favored. Waste tasks are usually ignored,
+but may be chosen when energy is low — even if more important tasks exist.
+
+Arguments:
+  energy                   (optional) Your current energy level.
+                           If omitted, you will be prompted to enter it.
+                           Possible values:
+                             1 - low
+                             2 - medium
+                             3 - high
+----------------------------------
+Usage:
+  todo rm [id] [OPTIONS]
+
+Removes a todo item.
+
+If no ID is provided, the todo list will be shown and you will be prompted
+to select an item to remove. If an ID is provided, the item will be deleted immediately.
+
+Arguments:
+  id                      (optional) ID of the todo item to remove
+
+Options:
+  -t, --title             Sort todos alphabetically by title
+  -D, --deadline          Sort todos by deadline: overdue → soonest → farthest
+  -p, --priority          Sort todos by priority: critical, growth, distraction, waste
+  -c, --created           Sort todos by creation time (oldest first)
+  -b, --best              Sort todos by recommended action priority
+----------------------------------

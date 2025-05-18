@@ -210,12 +210,13 @@ time_t todo_get_timeToday(void)
 void todo_get_randomAction(TodoList *list)
 {
     uint32_t timeToday = (uint32_t)todo_get_timeToday();
-    uint32_t randomNumber = xorshift32(&timeToday) % (TODO_STREAM_MAX_TODOS * 2);
+    int randomNumber = xorshift32(&timeToday) % (TODO_STREAM_MAX_TODOS);
 
     uint32_t index = 0;
+    size_t size = list->size;
     for (uint32_t i = 0; randomNumber > 0; i++)
     {
-        index = i%(list->size);
+        index = i%(size);
         randomNumber -= list->priorityScore[index];
     }
 
@@ -235,7 +236,7 @@ void todo_get_bestAction(TodoList *list)
 
 void todo_compute_priorityScores(TodoList *list)
 {
-    pScore *scoreTable = todo_get_todouserenergy();
+    pScore *scoreTable = todo_get_todouserenergy(0);
     time_t timeToday = time(NULL);
     for (size_t i = 0; i < list->size; i++)
     {
@@ -256,12 +257,15 @@ pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreT
     return score;
 }
 
-pScore *todo_get_todouserenergy(void)
+pScore *todo_get_todouserenergy(unsigned int energy)
 {
     char buffer[20];
-    printf("Enter energy levels? (1 - LOW, 2 - MEDIUM, 3 - HIGH): ");
-    todo_getinput(buffer, 20);
-    uint32_t energy = strtoul(buffer, NULL, 0);
+    if (energy == 0)
+    {
+        printf("Enter energy levels? (1 - LOW, 2 - MEDIUM, 3 - HIGH): ");
+        todo_getinput(buffer, 20);
+        energy = strtoul(buffer, NULL, 0);
+    }
 
     switch(energy)
     {

@@ -477,7 +477,7 @@ void todo_stream_sort(TodoList *list)
 
     if (compare == todo_tree_priorityScoreCompare)
     {
-        pScore *scoreTable = todo_get_todouserenergy();
+        pScore *scoreTable = todo_get_todouserenergy(0);
         time_t timeToday = todo_get_timeToday();
         for (size_t i =0; i < size; i++)
         {
@@ -496,7 +496,7 @@ void todo_stream_sort(TodoList *list)
 
 }
 
-void todo_stream_priorityScoreSort(TodoList *list)
+void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
 {
     list->sortingFunc = todo_tree_priorityScoreCompare;
     todotreeCmpFun compare = list->sortingFunc;
@@ -510,8 +510,8 @@ void todo_stream_priorityScoreSort(TodoList *list)
     list->sortedList = root;
     size_t size = list->size;
 
+    pScore *scoreTable = todo_get_todouserenergy(energy);
     time_t timeToday = todo_get_timeToday();
-    pScore *scoreTable = todo_get_todouserenergy();
     for (size_t i =0; i < size; i++)
     {
         list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);

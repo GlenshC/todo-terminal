@@ -124,7 +124,7 @@ int gc_str_strcmp(const char *str1, const char *str2)
         str1++;
         str2++;
     }
-    return 0;
+    return *str1 - *str2;
 }
 
 int gc_str_partialMatch(const char *str1, const char *str2)

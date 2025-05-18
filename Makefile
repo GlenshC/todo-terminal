@@ -14,8 +14,8 @@ endif
 # Compiler
 CC := gcc
 CXX := gcc
-CFLAGS := -Wall -Wextra
-CXXFLAGS := -Wall -Wextra
+CFLAGS := -Wall -Werror -Wextra
+CXXFLAGS := -Wall -Werror -Wextra
 PROJECT_FLAGS    :=
 PROJECT_CXXFLAGS := 
 
