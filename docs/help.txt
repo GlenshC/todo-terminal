@@ -5,16 +5,18 @@ Usage:
   todo [COMMAND] [ARGS]
 
 Commands:
-  add       Adds a new todo
-  clear     Empties the todo list
-  edit      Edits an existing todo item
-  get       Suggests the best action to do next
-  help      Shows this help message and exits
-  list      Shows all todos and exits
-  random    Suggests a random action to do next
-  rm        Removes a todo
-  version   Shows the version information
-  view      Views detailed information of a todo
+  add         Adds a new todo item
+  clear       Empties the todo list
+  edit        Edits an existing todo item
+  get         Suggests the best action to do next
+  help        Shows this help message or details about a specific command
+  list        Displays all todos
+  random      Suggests a random action to do next
+  rm          Removes a todo item
+  version     Displays the version information
+  view        Views detailed information of a todo item
+
+
 
 ----------------------------------
 Usage:
@@ -22,7 +24,7 @@ Usage:
 
 Adds a new todo item with optional metadata.
 
-Positional Arguments:
+Arguments:
   title                         Title of the todo item
 
 Options:
@@ -38,6 +40,9 @@ Examples:
   todo add "Read book"
   todo add "Finish project" -d "Due next week" -D 25/05/2025 -p critical
   todo add "Scroll Instagram" -p 4
+
+
+
 ----------------------------------
 Usage:
   todo clear [OPTIONS]
@@ -46,13 +51,16 @@ Empties the todo list.
 
 Options:
   --force    Skips the confirmation prompt ("Are you sure? [yes/no]")
+
+
+
 ----------------------------------
 Usage:
   todo edit [id]
 
 Edits a todo item. If an id is provided, edits that item directly; otherwise, shows the todo list for selection.
 
-Positional Arguments:
+Arguments:
   id                         (Optional) ID of the todo item to edit
 ----------------------------------
 Usage:
@@ -128,3 +136,18 @@ Options:
   -c, --created           Sort todos by creation time (oldest first)
   -b, --best              Sort todos by recommended action priority
 ----------------------------------
+Usage:
+  todo version
+
+Displays the current version of the todo application.
+----------------------------------
+Usage:
+  todo view [id]
+
+Displays detailed information about a specific todo item.
+
+If no ID is provided, the todo list will be shown and you will be prompted
+to select an item to view.
+
+Arguments:
+  id                      (optional) ID of the todo item to view

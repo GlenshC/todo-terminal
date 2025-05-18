@@ -54,7 +54,8 @@
         "streambuf": "c",
         "typeinfo": "c",
         "*.rh": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "commands.h": "c"
     },
     "C_Cpp.exclusionPolicy": "checkFilesAndFolders",
     "C_Cpp.files.exclude": {
