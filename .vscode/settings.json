@@ -55,7 +55,14 @@
         "typeinfo": "c",
         "*.rh": "c",
         "stdint.h": "c",
-        "commands.h": "c"
+        "commands.h": "c",
+        "gc_speed_test.h": "c",
+        "terminal_colors.h": "c",
+        "todo_help.h": "c",
+        "todo_args.h": "c",
+        "windows.h": "c",
+        "todo_api.h": "c",
+        "concepts": "c"
     },
     "C_Cpp.exclusionPolicy": "checkFilesAndFolders",
     "C_Cpp.files.exclude": {

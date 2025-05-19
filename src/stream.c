@@ -7,6 +7,7 @@
 #include "gc_logs.h"
 #include "todo_tree.h"
 #include "todo_cmp.h"
+#include "todo_args.h"
 #include "todo_cmd.h"
 
 
@@ -242,6 +243,7 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     }
     
     list->sortedList = NULL;
+    list->energy = 0;
     list->isAccending = 1;
     list->timeToday = todo_get_timeToday();
     list->sortingFunc = todo_tree_defaultCompare;
@@ -478,11 +480,11 @@ void todo_stream_sort(TodoList *list)
 
     if (compare == todo_tree_priorityScoreCompare)
     {
-        pScore *scoreTable = todo_get_todouserenergy(0);
+        pScore *scoreTable = todo_get_todouserenergy(list->energy);
         time_t timeToday = todo_get_timeToday();
         for (size_t i =0; i < size; i++)
         {
-            todo_get_priorityScore(list, i, scoreTable, timeToday);
+            list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
             todo_tree_push(list, root, i, compare);
         }
     }

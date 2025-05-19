@@ -43,7 +43,6 @@ static char *TODO_QUADRANTS[] = {
 };
 
 static int TODO_DEADLINE_COLOR[] = {
-/*    6   12   24   48   72  120  168 */
     196, 202, 208, 214, 220, 226, 229, 250
 };
 
@@ -51,6 +50,12 @@ static pScore todo_get_todopressure(time_t deadline, time_t today);
 static pScore todo_get_todoage(time_t created, time_t today);
 
 static uint32_t xorshift32(uint32_t *state) ; // random number generator
+
+
+time_t todo_get_timeToday(void)
+{
+    return time(NULL);
+}
 
 void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority)
 {
@@ -161,70 +166,7 @@ void todo_edit(TodoList *list, unsigned int index)
     }
 }
 
-
-void todo_sorting_arg(TodoList *list, int argc, char *argv[])
-{
-    list->sortingFunc = todo_tree_defaultCompare;
-    for (int i = 2; i < argc; i++)
-    {
-        if (argv[i][0] == '-' && argv[i][1] == '-')
-        {
-            if (todo_cmdi("--priority", i) == 0)
-            {
-                list->sortingFunc = todo_tree_priorityCompare;
-            }
-            else if (todo_cmdi("--best", i) == 0)
-            {
-                list->sortingFunc = todo_tree_priorityScoreCompare;
-            }
-            else if (todo_cmdi("--deadline", i) == 0)
-            {
-                list->sortingFunc = todo_tree_deadlineCompare;
-            }
-            else if (todo_cmdi("--created", i) == 0)
-            {
-                list->sortingFunc = todo_tree_createdCompare;
-            }
-            else if (todo_cmdi("--title", i) == 0)
-            {
-                list->sortingFunc = todo_tree_titleCompare;
-            }
-        }
-        else if (argv[i][0] == '-')
-        {
-            if (todo_cmdi("-p", i) == 0)
-            {
-                list->sortingFunc = todo_tree_priorityCompare;
-            }
-            else if (todo_cmdi("-b", i) == 0)
-            {
-                list->sortingFunc = todo_tree_priorityScoreCompare;
-            }
-            else if (todo_cmdi("-d", i) == 0)
-            {
-                list->sortingFunc = todo_tree_deadlineCompare;
-            }
-            else if (todo_cmdi("-c", i) == 0)
-            {
-                list->sortingFunc = todo_tree_createdCompare;
-            }
-            else if (todo_cmdi("-t", i) == 0)
-            {
-                list->sortingFunc = todo_tree_titleCompare;
-            }
-        }
-        
-    }
-
-}
-
-time_t todo_get_timeToday(void)
-{
-    return time(NULL);
-}
-
-
-void todo_get_randomAction(TodoList *list)
+void todo_cmd_random(TodoList *list)
 {
     uint32_t timeToday = (uint32_t)todo_get_timeToday();
     int randomNumber = xorshift32(&timeToday) % (TODO_STREAM_MAX_TODOS);
@@ -240,7 +182,7 @@ void todo_get_randomAction(TodoList *list)
     todo_stream_display_sorted(list, index);
 }
 
-void todo_get_bestAction(TodoList *list)
+void todo_cmd_get(TodoList *list)
 {
     unsigned int index = todo_tree_at(list, list->sortedList, 0);
     todo_stream_display_sorted(list, index);
@@ -405,15 +347,16 @@ static unsigned int todo_get_deadlineColor(time_t deadline, time_t today)
         return 1;
     else if (timeLeft < 24)
         return 2;
-    else if (timeLeft < 72)
+    else if (timeLeft < 38)
         return 3;
-    else if (timeLeft < 120)
+    else if (timeLeft < 72)
         return 4;
-    else if (timeLeft < 168)
+    else if (timeLeft < 120)
         return 5;
+    else if (timeLeft < 168)
+        return 6;
 
-    return 6;
-    
+    return 7;
 } // 1970
 
 static pScore todo_get_todoage(time_t created, time_t today)
@@ -431,5 +374,4 @@ static void todo_display_table_list(TodoList *list)
 {
     todo_display_table_header();
     todo_tree_display(list, list->sortedList, todo_stream_display_sorted); 
-}  
-/*  */
+}

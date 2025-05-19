@@ -62,6 +62,7 @@ typedef struct DynamicTodoList
     todotreeCmpFun sortingFunc;
     long long timeToday;
     uint8_t isAccending; 
+    uint8_t energy; 
 } TodoList;
 
 /*
@@ -81,5 +82,18 @@ typedef enum {
     TODO_SORT_TITLE
 } todo_TreeSortType;
 
+/* COMMANDS */
+typedef enum TodoCommandsEnum {
+    COMMAND_ADD,
+    COMMAND_CLEAR,
+    COMMAND_EDIT,
+    COMMAND_GET,
+    COMMAND_HELP,
+    COMMAND_LIST,
+    COMMAND_RANDOM,
+    COMMAND_REMOVE,
+    COMMAND_VERSION,
+    COMMAND_VIEW,
+} TodoCommandsEnum;
 
 #endif

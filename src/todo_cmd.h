@@ -2,6 +2,7 @@
 #ifndef TODO_CMD_INTERFACE_H
 #define TODO_CMD_INTERFACE_H
 #include "types.h"
+// #include "gc_string.h"
 typedef long long time_t;
 
 #define targ_get(index, default) (((index) < argc) ? (argv[(index)]) : (default))
@@ -20,7 +21,7 @@ pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreT
 pScore *todo_get_todouserenergy(unsigned int energy);
 time_t todo_get_timeToday(void);
 
-void todo_get_randomAction(TodoList *list);
-void todo_get_bestAction(TodoList *list);
+void todo_cmd_get(TodoList *list);
+void todo_cmd_random(TodoList *list);
 
 #endif // #define TODO_CMD_INTERFACE_H

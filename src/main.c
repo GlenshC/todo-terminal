@@ -18,20 +18,17 @@ int main(int argc, char *argv[])
     else 
     {
         todo_GUI();//0   1    2    3    4    5    6    7    8    9
-    int colors[] = {250, 246, 240, 229, 226, 220, 214, 208, 202, 196};
-    /* 9 7 5 3 0 */
-    /*   6  12  24  48  72 120 168*/
-    /* 196 202 208 214 220 226 229 250 */
-    const char *labels[] = {
-        "Light Gray", "Silver", "Dark Gray", "Yellow (light)",
-        "Yellow", "Warm Yellow", "Yellow-Orange", "Orange",
-        "Red-Orange", "Red"
-    };
+        int colors[] = {250, 246, 240, 229, 226, 220, 214, 208, 202, 196};
+        const char *labels[] = {
+            "Light Gray", "Silver", "Dark Gray", "Yellow (light)",
+            "Yellow", "Warm Yellow", "Yellow-Orange", "Orange",
+            "Red-Orange", "Red"
+        };
 
-    for (int i = 0; i < 10; i++) {
-        printf("\x1b[38;5;%dm%s\n", colors[i], labels[i]);
-    }
+        for (int i = 0; i < 10; i++) {
+            printf("\x1b[38;5;%dm%s\n", colors[i], labels[i]);
+        }
 
-    printf("\x1b[0m"); // Reset
+        printf("\x1b[0m"); // Reset
     }
 }
