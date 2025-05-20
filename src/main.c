@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
     else 
     {
         todo_GUI();//0   1    2    3    4    5    6    7    8    9
+    
         int colors[] = {250, 246, 240, 229, 226, 220, 214, 208, 202, 196};
         const char *labels[] = {
             "Light Gray", "Silver", "Dark Gray", "Yellow (light)",

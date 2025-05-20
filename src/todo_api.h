@@ -15,6 +15,7 @@
     void cmd_get(TodoList *list, int argc, char *argv[]);
     void cmd_random(TodoList *list, int argc, char *argv[]);
     void cmd_edit(TodoList *list, int argc, char *argv[]);
+    void cmd_view(TodoList *list, int argc, char *argv[]);
     
     void todo_readlist(TodoList *list);
     void todo_writelist(TodoList *list);

@@ -88,10 +88,14 @@ const TodoCommand TODO_COMMANDS[] = {
         "todo get [energy]",
         NULL,
         (TodoCmdArguments[]){
-            { "energy", "(optional) Your current energy level. If omitted, you will be prompted to enter it. Possible values:\n  1 - low\n  2 - medium\n  3 - high" }
+            { "energy", "(optional) Your current energy level. If omitted, you will be prompted to enter it." },
+            {"", "           Possible values:"},
+            {"", "             1 - low"},
+            {"", "             2 - medium"},
+            {"", "             3 - high"},
         },
         NULL,
-        0, 1, 0
+        0, 5, 0
     },
     {
         "help",
@@ -131,10 +135,14 @@ const TodoCommand TODO_COMMANDS[] = {
         "todo random [energy]",
         NULL,
         (TodoCmdArguments[]){
-            { "energy", "(optional) Your current energy level. If omitted, you will be prompted to enter it. Possible values:\n  1 - low\n  2 - medium\n  3 - high" }
+            { "energy", "(optional) Your current energy level. If omitted, you will be prompted to enter it." },
+            {"", "           Possible values:"},
+            {"", "             1 - low"},
+            {"", "             2 - medium"},
+            {"", "             3 - high"},
         },
         NULL,
-        0, 1, 0
+        0, 5, 0
     },
     {
         "rm",
@@ -147,7 +155,7 @@ const TodoCommand TODO_COMMANDS[] = {
         },
         (TodoCmdOptions[]){
             { "-t", "--title", "Sort todos alphabetically by title" },
-            { "-D", "--deadline", "Sort todos by deadline: overdue → soonest → farthest" },
+            { "-D", "--deadline", "Sort todos by deadline: overdue - soonest - farthest" },
             { "-p", "--priority", "Sort todos by priority: critical, growth, distraction, waste" },
             { "-c", "--created", "Sort todos by creation time (oldest first)" },
             { "-b", "--best", "Sort todos by recommended action priority" }

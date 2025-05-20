@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef uint8_t pScore;
+typedef long long pScore;
 
 typedef struct TNode{
     unsigned int value;
@@ -62,7 +62,7 @@ typedef struct DynamicTodoList
     todotreeCmpFun sortingFunc;
     long long timeToday;
     uint8_t isAccending; 
-    uint8_t energy; 
+    unsigned int energy; 
 } TodoList;
 
 /*

@@ -1,0 +1,8 @@
+20/5/2025
+added todo list recovery
+fixing bin serialization and reading and writing
+20/5/2025
+fixed bin serialization and writing:
+    added 8 byte alignment
+    data recovery on version from 1.0b and onwards
+    data before this version will be lost

@@ -5,6 +5,7 @@
 #include "gc_speed_test.h"
 #include "todo.h"
 #include "todo_api.h"
+#include "todo_version.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -28,9 +29,22 @@ void todo_CLI(int argc, char *argv[])
         todo_help(argc, argv); 
         return;
     }
+    else if (todo_cmd("version") == 0)
+    {
+        todo_show_version();
+        return;   
+    }
+// #undef GC_DEBUG
+#ifdef GC_DEBUG
+    double totalTime = 0;
+    GC_SpeedTest readtest, writetest, functest, freetest;
+#endif
 
+    PerfomanceTime_Start(&readtest, "Read test");
     todo_readlist(&list);
+    PerfomanceTime_End(&readtest, &totalTime);
     
+    PerfomanceTime_Start(&functest, "Function test");
     {
         if (todo_cmd("add") == 0)
         {
@@ -61,20 +75,32 @@ void todo_CLI(int argc, char *argv[])
             cmd_edit(&list, argc, argv);
             
         }
+        else if (todo_cmd("view") == 0)
+        {
+            cmd_view(&list, argc, argv);   
+        }
         else 
         {
             todo_help_error(argv[1]);            
         }
     }
-
+    PerfomanceTime_End(&functest, &totalTime);
+    
+    PerfomanceTime_Start(&writetest, "Write Test");
     todo_writelist(&list);
-#ifdef GC_DEBUG
+    PerfomanceTime_End(&writetest, &totalTime);
+    
+    PerfomanceTime_Start(&freetest, "Free resource Test");
     todo_freelist(&list); // remove if you want faster exit
+    PerfomanceTime_End(&freetest, &totalTime);
+
+#ifdef GC_DEBUG
+    printf("Total time elapsed: %lf\n", totalTime);
 #endif
 
 }
 
 void todo_GUI()
 {
-    GC_LOG("GUI");
+    GC_LOG(TERMINAL_COLOR_BLUE "Coming soon: Todo-GUI\n" TERMINAL_COLOR_RESET);
 }

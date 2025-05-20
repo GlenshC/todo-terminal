@@ -1,46 +1,27 @@
 future additions:
-    usual stuff we do
-    routine?
+    usual stuff we do - routine?
 
 Redesign:
-    priority system
-    ugent and important
+    priority system - DONE
+    ugent and important - DONE
 
-Priority
-0 = urgent important (Critical)
-1 = not urgent important (Growth) --[DEFAULT]
-2 = urgent not important (Distraction)
-3 = not urgent not important (Waste)
+Add:
+help with invalid command usage 
+add list args descending and ascending
 
-Get Algorithm
-    0, 1, 2, 3 priority
-    get random:
-        based on weigth of the quadrants
-        default:
-            20%
-            60%
-            20%
-            0%
-        waste of time allowed:
-            18%
-            58%
-            18%
-            6%
-        
-    get normal ask for:
-        energy levels:
-            high: q1
-            med: 
-            low
+fix:
 
-        do you want to be productive?
-            if yes force quadrant 0 or 1:
-                25%
-                75%
-                0%
-                0%
-            else
+fixed:
+free_todolist
 
+ADDED
+todo edit - editing must accept words as input on priority
+todo rm args
+todo edit args
+(limit max string lenth %padding.maxs)
+todo rm/edit/get/random prompts user input even when no items
+todo view
+todo version
+bin serialization version (for updating the app) // byte alignment
+displaying strings can destroy UI 
 
-
-currently implementing get

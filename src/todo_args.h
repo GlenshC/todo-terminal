@@ -3,11 +3,14 @@
 #include "types.h"
 
 void todo_cmd_add(TodoList *list, int argc, char *argv[]);
-void todo_cmd_edit(TodoList *list);
+void todo_cmd_edit(TodoList *list, int argc, char *argv[]);
+void todo_cmd_view(TodoList *list, int argc, char *argv[]);
 void todo_cmd_clear(int argc, char *argv[]);
-void todo_cmd_remove(TodoList *list);
+void todo_cmd_remove(TodoList *list, int argc, char *argv[]);
 
 void todo_sorting_arg(TodoList *list, int argc, char *argv[]);
 unsigned int todo_get_args(int argc, char *argv[], unsigned int index);
+unsigned int todo_arg_id(int argc, char *argv[], unsigned int index);
+unsigned int todo_priority_input(char *str, unsigned int defaultpriority);
 
 #endif // TODO_ARGS_INTERFACE_H

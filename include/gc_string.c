@@ -144,7 +144,7 @@ int gc_str_partialMatch(const char *str1, const char *str2)
         return 1;
     }
 
-    while (*str1 && *str2)
+    do
     {
         a = ctolower(*str1), b = ctolower(*str2);
         if (a == b) {
@@ -157,6 +157,8 @@ int gc_str_partialMatch(const char *str1, const char *str2)
         str1++;
         str2++;
     }
+    while (*str1 && *str2);
+    
     return a-b;
 
 }

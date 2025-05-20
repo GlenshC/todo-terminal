@@ -9,22 +9,30 @@
 #include "todo_cmp.h"
 #include "todo_args.h"
 #include "todo_cmd.h"
+#include "todo_version.h"
+#include "terminal_colors.h"
+#include "todo_error.h"
+#include "todo_get_alg.h"
 
+#include "todoio.h"
 
+void todo_stream_recover(TodoList *list, FILE *file);
 #define gc_binceil64(x) (--(x), (x) |= (x) >> 1, (x) |= (x) >> 2, (x) |= (x) >> 4, (x) |= (x) >> 8, (x) |= (x) >> 16, (x) |= (x) >> 32, ++(x))
 
 #define STREAM_STARTING_CAPCITY 16
 #define STREAM_CAPACITY_MARGIN 4
 
 static const char *TODO_FILE_HEADER = "TODO";
-static const size_t TODO_FILE_PADDING = 0xCCCCCCCCCCCCCCCC;
+static const char TODO_FILE_PADDING_START[] = {0xAB, 0xCD, 0xEF, 0xCC, 0xCC, 0xFE, 0xDC, 0xBA};
+static const char TODO_FILE_PADDING_END[] =   {0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
 
 
 // static int todo_stream_write_new(TodoList *list); // depreciated
 static void todo_stream_write_header(FILE *file);
 static int todo_stream_check_header(FILE *file);
 int todo_stream_init(TodoList *list, size_t capacity);
-
+static void stream_reader(TodoList *todolist, FILE *file);
+static void stream_writer(TodoList *todolist, FILE *file);
 // static void todo_stream_display_sorted(TodoList *list, unsigned int value);
 
 
@@ -43,48 +51,16 @@ int todo_stream_write(TodoList *list) // capacity update
     }
     
     FILE *tempFile;
-    size_t n = list->size;
-    
+
     tempFile = fopen("temp.temptodo", "wb");
     if (tempFile == NULL)
     {
         GC_LOG("temp failed");
         return 2;
     }
-    
+
     todo_stream_write_header(tempFile);
-    
-    // number of elements
-    fwrite(&n, sizeof(list->size), 1, tempFile);
-
-    // title sizes
-    fwrite(list->titleSize, sizeof(*list->titleSize), n, tempFile);
-
-    // titles
-    for (size_t i = 0; i < n; i++)
-    {
-        fwrite(list->title[i], sizeof(char), list->titleSize[i], tempFile);
-    }
-    
-    // description sizes
-    fwrite(list->descSize, sizeof(*list->descSize), n, tempFile);
-
-    // descriptions
-    for (size_t i = 0; i < n; i++)
-    {
-        fwrite(list->desc[i], sizeof(char), list->descSize[i], tempFile);
-    }
-
-    // priority
-    fwrite(list->priority, sizeof(*list->priority), n, tempFile);
-
-    // created
-    fwrite(list->created, sizeof(*list->created), n, tempFile);
-    
-    // deadline
-    fwrite(list->deadline, sizeof(*list->deadline), n, tempFile);
-
-    fwrite(&TODO_FILE_PADDING, sizeof(size_t), 1, tempFile);
+    stream_writer(list, tempFile);
 
     fclose(tempFile);
     remove("todo.todo");
@@ -92,6 +68,49 @@ int todo_stream_write(TodoList *list) // capacity update
 
     return 0;
         
+}
+
+
+static void stream_writer(TodoList *todolist, FILE *file)
+{
+    size_t bytesWritten;
+    size_t n = todolist->size;
+
+    // number of elements
+    fwrite_align8(&n, sizeof(todolist->size), 1, file);
+
+    // title sizes
+    fwrite_align8(todolist->titleSize, sizeof(*todolist->titleSize), n, file);
+
+    // titles
+    bytesWritten = 0;
+    for (size_t i = 0; i < n; i++)
+    {
+        bytesWritten += fwrite(todolist->title[i], sizeof(char), todolist->titleSize[i], file);
+    }
+    fwrite_pad8(bytesWritten, file);
+    
+    // description sizes
+    fwrite_align8(todolist->descSize, sizeof(*todolist->descSize), n, file);
+
+    // descriptions
+    bytesWritten = 0;
+    for (size_t i = 0; i < n; i++)
+    {
+        bytesWritten += fwrite(todolist->desc[i], sizeof(char), todolist->descSize[i], file);
+    }
+    fwrite_pad8(bytesWritten, file);
+
+    // priority
+    fwrite_align8(todolist->priority, sizeof(*todolist->priority), n, file);
+
+    // created
+    fwrite_align8(todolist->created, sizeof(*todolist->created), n, file);
+    
+    // deadline
+    fwrite_align8(todolist->deadline, sizeof(*todolist->deadline), n, file);
+
+    fwrite_align8(&TODO_FILE_PADDING_END, sizeof(size_t), 1, file);
 }
 
 // READING prodecure
@@ -106,8 +125,7 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     {
         return -1;
     }
-    FILE *readwrite;
-    
+    FILE *readwrite;    
     readwrite = fopen("todo.todo", "rb");
     if (readwrite == NULL)
     {
@@ -115,16 +133,44 @@ int todo_stream_read(TodoList *todolist) // capacity update done
         return 1;
     }
     
-    if (todo_stream_check_header(readwrite))
+    int status = todo_stream_check_header(readwrite);
+    // GC_LOG("status: %d\n", status);
+    if (status < 0)
     {
-        GC_LOG("wrong header\n");
+        printf(
+            TERMINAL_BOLD_RED 
+            "Error: Save file version is pre-1.0b and cannot be loaded.\n" 
+            TERMINAL_COLOR_RESET
+        );
+        fclose(readwrite);
+        todo_cmd_clear(0, NULL);
+    }
+    else if (status) 
+    {
+        
+        printf(
+            TERMINAL_BOLD_RED "Wrong version.\n" TERMINAL_COLOR_RESET
+            TERMINAL_COLOR_BLUE "Attempting to recover data.\n" TERMINAL_COLOR_RESET
+        );
+        todo_stream_recover(todolist, readwrite);
+    
         fclose(readwrite);
         return 2;
     }
-    
-    // get number of elements
-    size_t size;
-    fread(&size, sizeof(todolist->size), 1, readwrite);
+
+    stream_reader(todolist, readwrite);
+
+    fclose(readwrite);
+    // todo_stream_sort(todolist);
+
+    return 0;
+}
+
+static void stream_reader(TodoList *todolist, FILE *file)
+{
+        // get number of elements
+    size_t size, bytesRead;
+    fread_align8(&size, sizeof(todolist->size), 1, file);
     
     // malloc
     todo_stream_init(todolist, size);
@@ -138,39 +184,38 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     long long *deadline = todolist->deadline;
     
     // get title sizes
-    fread(titleSize, sizeof(*todolist->titleSize), size, readwrite);
+    fread_align8(titleSize, sizeof(*todolist->titleSize), size, file);
     
     // get titles
+    bytesRead = 0;
     for (size_t i = 0; i < size; i++)
     {
         size_t n = titleSize[i];
         title[i] =  malloc(sizeof(char) * (n+1));
         
-        fread(title[i], sizeof(char), n, readwrite);
+        bytesRead += fread(title[i], sizeof(char), n, file);
         title[i][n] = 0;
     }
+    fread_pad8(bytesRead, file);
     
     // get desc sizes
-    fread(descSize, sizeof(*todolist->descSize), size, readwrite);
+    fread_align8(descSize, sizeof(*todolist->descSize), size, file);
     
     // get descs
+    bytesRead = 0;
     for (size_t i = 0; i < size; i++)
     {
         size_t n = descSize[i];
         desc[i] =  malloc(sizeof(char) * (n+1));
         
-        fread(desc[i], sizeof(char), n, readwrite);
+        bytesRead += fread(desc[i], sizeof(char), n, file);
         desc[i][n] = 0;
     }
+    fread_pad8(bytesRead, file);
 
-    fread(priority, sizeof(*todolist->priority), size, readwrite);
-    fread(created, sizeof(*todolist->created), size, readwrite);    
-    fread(deadline, sizeof(*todolist->deadline), size, readwrite);
-
-    fclose(readwrite);
-    // todo_stream_sort(todolist);
-
-    return 0;
+    fread_align8(priority, sizeof(*todolist->priority), size, file);
+    fread_align8(created, sizeof(*todolist->created), size, file);    
+    fread_align8(deadline, sizeof(*todolist->deadline), size, file);
 }
 
 // initializes todolist stream
@@ -249,6 +294,52 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     list->sortingFunc = todo_tree_defaultCompare;
 
     return 0;
+}
+
+// frees todolist
+void todo_stream_free_todolist(TodoList *todolist) // capacity update
+{
+    if (NULL == todolist && 0 == todolist->size)
+    {
+        GC_LOG("todo list empty");
+        return;
+    }
+    size_t size = todolist->size;
+    
+    free(todolist->titleSize);
+    for (size_t i = 0; i < size; i++)
+    {
+        free(todolist->title[i]);
+    }
+    free(todolist->title);
+    
+    for (size_t i = 0; i < size; i++)
+    {
+        if (todolist->descSize[i])
+        {
+            free(todolist->desc[i]);
+        }
+    }
+    free(todolist->descSize);
+
+    free(todolist->desc);
+    
+    free(todolist->priority);
+    free(todolist->created);
+    free(todolist->deadline);
+    
+    todo_tree_free(&todolist->sortedList);
+    
+    todolist->size = 0;
+    todolist->capacity = 0;
+    todolist->titleSize = NULL;
+    todolist->title = NULL;
+    todolist->descSize = NULL;
+    todolist->desc = NULL;
+    todolist->priority = NULL;
+    todolist->created = NULL;
+    todolist->deadline = NULL;
+    todolist->sortedList = NULL;
 }
 
 // grow todolist stream
@@ -358,9 +449,10 @@ int todo_stream_remove(TodoList *list, size_t index)
     }
     if (index >= list->size)
     {
-        printf("Invalid Operation: Out-of-Range.\n");
-        return -2;
+        todo_error(TODO_ERROR_INVALID_ID);
+        return -1;
     }
+    
     //void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare);
     (list->size)--;
     size_t end = list->size;
@@ -420,47 +512,7 @@ int todo_stream_remove_inorder(TodoList *list, size_t index)
 }
 
 
-// frees todolist
-void todo_stream_free_todolist(TodoList *todolist) // capacity update
-{
-    if (NULL == todolist && 0 == todolist->size)
-    {
-        GC_LOG("todo list empty");
-        return;
-    }
-    size_t size = todolist->size;
-    
-    free(todolist->titleSize);
-    for (size_t i = 0; i < size; i++)
-    {
-        free(todolist->title[i]);
-    }
-    free(todolist->title);
-    
-    free(todolist->descSize);
-    for (size_t i = 0; i < size; i++)
-    {
-        free(todolist->desc[i]);
-    }
-    free(todolist->desc);
-    
-    free(todolist->priority);
-    free(todolist->created);
-    free(todolist->deadline);
 
-    todo_tree_free(&todolist->sortedList);
-    
-    todolist->size = 0;
-    todolist->capacity = 0;
-    todolist->titleSize = NULL;
-    todolist->title = NULL;
-    todolist->descSize = NULL;
-    todolist->desc = NULL;
-    todolist->priority = NULL;
-    todolist->created = NULL;
-    todolist->deadline = NULL;
-    todolist->sortedList = NULL;
-}
 
 void todo_stream_sort(TodoList *list)
 {
@@ -480,7 +532,7 @@ void todo_stream_sort(TodoList *list)
 
     if (compare == todo_tree_priorityScoreCompare)
     {
-        pScore *scoreTable = todo_get_todouserenergy(list->energy);
+        pScore *scoreTable = todo_get_todouserenergy(&list->energy);
         time_t timeToday = todo_get_timeToday();
         for (size_t i =0; i < size; i++)
         {
@@ -501,6 +553,10 @@ void todo_stream_sort(TodoList *list)
 
 void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
 {
+    if (list->size < 1)
+    {
+        return;
+    }
     list->sortingFunc = todo_tree_priorityScoreCompare;
     todotreeCmpFun compare = list->sortingFunc;
 
@@ -513,7 +569,9 @@ void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
     list->sortedList = root;
     size_t size = list->size;
 
-    pScore *scoreTable = todo_get_todouserenergy(energy);
+    list->energy = energy;
+
+    pScore *scoreTable = todo_get_todouserenergy(&list->energy);
     time_t timeToday = todo_get_timeToday();
     for (size_t i =0; i < size; i++)
     {
@@ -528,8 +586,127 @@ void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
     Private Functions 
    ==============================*/
 
-   
+void todo_stream_recover(TodoList *list, FILE *file)
+{
+    size_t padding;
+    char firstChar;
+    fseek(file, 0, SEEK_SET);
+
+    int i = 0, maxi = 128; 
+    for (;i < maxi; i++)
+    {
+        fread(&firstChar, sizeof(char), 1, file);
+        if (firstChar == TODO_FILE_PADDING_START[0])
+        {
+            fseek(file, -1, SEEK_CUR);
+            fread_align8(&padding, sizeof(size_t), 1, file);
+            if (padding == *((size_t *)TODO_FILE_PADDING_START) || feof(file) || ferror(file))
+            {
+                break;
+            }
+            fseek(file, -7, SEEK_CUR);
+        }
+    }
+    if (padding == *((size_t *)TODO_FILE_PADDING_START))
+    {
+        printf(TERMINAL_COLOR_GREEN "Data recovered.\n" TERMINAL_COLOR_RESET);
+    }
+    else 
+    {
+        fclose(file);
+        printf(TERMINAL_COLOR_RED "Data recovery failed.\n" TERMINAL_COLOR_RESET);
+        todo_cmd_clear(0, NULL);
+        exit(EXIT_FAILURE);
+    }
+    
+    stream_reader(list, file);
+}
+
+static void todo_stream_write_header(FILE *file)
+{
+    fwrite_align8(TODO_FILE_HEADER, sizeof(char), 4, file);
+    fwrite_align8(TODO_APP_VERSION, sizeof(char), TODO_APP_VERSION_SIZE, file);
+    fwrite_align8(TODO_FILE_PADDING_START, sizeof(size_t), 1, file);
+}
+
+static int todo_stream_check_header(FILE *file)
+{
 /* 
+    error codes: 
+    -1 wrong file
+    -2 no pad detetected
+     0 normal/successful
+     1 invalid
+    +2 represents version index in todo_version.h just subtract 2
+*/
+    char header[5] = {};
+    char version[20] = {};
+    size_t padding;
+    int status = 0;
+
+    fread_align8(header, sizeof(char), 4, file);
+    if (strcmp(header, TODO_FILE_HEADER) != 0)
+    {
+        return -1;
+    }
+
+    fread_align8(version, sizeof(char), TODO_APP_VERSION_SIZE, file);
+    version[TODO_APP_VERSION_SIZE] = 0;
+    if (strcmp(version, TODO_APP_VERSION) != 0)
+    {
+        status = todo_version_id(version) + 1;
+    }
+    
+    // check padding;
+    fread_align8(&padding, sizeof(size_t), 1, file);
+    if (padding != *((size_t *)TODO_FILE_PADDING_START))
+    {
+        return -2;
+    }
+
+    return status;
+}
+
+
+/* 
+    //.todo header must exist or else; 
+    TODO // must be 4 bytes
+
+    0xCCCCCCCCCCCCCCCC pading
+    
+    size_t n
+    
+    size_t titleSize[];
+    char *title[];
+    
+    size_t descSize[];
+    char *desc[];
+        
+    size_t priority[];
+    time_t created[];
+    time_t deadline[];
+    
+    0xCCCCCCCCCCCCCCCC pading
+*/
+
+/* 
+{
+typedef struct TodoT
+{
+    size_t titleSize;
+    size_t descSize;
+    size_t priority;
+    char *title;
+    char *desc;
+    time_t created;
+    time_t deadline;
+} TodoT; // 56bytes - nopads
+
+
+
+
+   
+
 
 static int todo_stream_write_new(TodoList *list)
 {
@@ -587,67 +764,3 @@ static int todo_stream_write_new(TodoList *list)
     return 0;
 } */
 
-static void todo_stream_write_header(FILE *file)
-{
-    fwrite(TODO_FILE_HEADER, sizeof(char), 4, file);
-    fwrite(&TODO_FILE_PADDING, sizeof(size_t), 1, file);
-}
-
-static int todo_stream_check_header(FILE *file)
-{
-    // check header;
-    char header[5] = {};
-    size_t padding;
-
-    fread(header, sizeof(char), 4, file);
-    if (strcmp(header, TODO_FILE_HEADER) != 0)
-    {
-        return 1;
-    }
-    
-    // check padding;
-    fread(&padding, sizeof(size_t), 1, file);
-    if (padding != 0xCCCCCCCCCCCCCCCC)
-    {
-        return 2;
-    }
-
-    return 0;
-}
-
-
-/* 
-    //.todo header must exist or else; 
-    TODO // must be 4 bytes
-
-    0xCCCCCCCCCCCCCCCC pading
-    
-    size_t n
-    
-    size_t titleSize[];
-    char *title[];
-    
-    size_t descSize[];
-    char *desc[];
-        
-    size_t priority[];
-    time_t created[];
-    time_t deadline[];
-    
-    0xCCCCCCCCCCCCCCCC pading
-*/
-
-/* 
-{
-typedef struct TodoT
-{
-    size_t titleSize;
-    size_t descSize;
-    size_t priority;
-    char *title;
-    char *desc;
-    time_t created;
-    time_t deadline;
-} TodoT; // 56bytes - nopads
-
-*/

@@ -14,8 +14,8 @@ endif
 # Compiler
 CC := gcc
 CXX := gcc
-CFLAGS := -Wall -Werror -Wextra
-CXXFLAGS := -Wall -Werror -Wextra
+CFLAGS := -Wall -Werror -Wextra -O3
+CXXFLAGS := -Wall -Werror -Wextra -O3
 PROJECT_FLAGS    :=
 PROJECT_CXXFLAGS := 
 
@@ -41,6 +41,10 @@ C_SRC   := 	src/main.c \
 			src/todo_api.c \
 			src/todo_help.c \
 			src/todo_args.c \
+			src/todo_error.c \
+			src/todoio.c \
+			src/todo_get_alg.c \
+			src/todo_version.c \
 			include/gc_string.c \
 			include/gc_tokens.c
 CXX_SRC := 	

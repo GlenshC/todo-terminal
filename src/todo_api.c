@@ -23,8 +23,7 @@ void cmd_remove(TodoList *list, int argc, char *argv[])
 {
     todo_sort(list, argc, argv);
 
-    todo_list(list);
-    todo_cmd_remove(list);
+    todo_cmd_remove(list, argc, argv);
 }
 
 void cmd_list(TodoList *list, int argc, char *argv[])
@@ -50,8 +49,14 @@ void cmd_edit(TodoList *list, int argc, char *argv[])
 {
     todo_sort(list, argc, argv);
 
-    todo_list(list);    
-    todo_cmd_edit(list);
+    todo_cmd_edit(list, argc, argv);
+}
+
+void cmd_view(TodoList *list, int argc, char *argv[])
+{
+    todo_sort(list, argc, argv);
+
+    todo_cmd_view(list, argc, argv);
 }
 
 void todo_readlist(TodoList *list)
