@@ -6,3 +6,7 @@ fixed bin serialization and writing:
     added 8 byte alignment
     data recovery on version from 1.0b and onwards
     data before this version will be lost
+
+21/5/2025
+    fixed hanging free_todolist
+    fixed add

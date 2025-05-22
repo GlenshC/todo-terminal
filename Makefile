@@ -45,6 +45,9 @@ C_SRC   := 	src/main.c \
 			src/todoio.c \
 			src/todo_get_alg.c \
 			src/todo_version.c \
+			src/bitwise.c \
+			src/stream_reader.c \
+			src/stream_writer.c \
 			include/gc_string.c \
 			include/gc_tokens.c
 CXX_SRC := 	

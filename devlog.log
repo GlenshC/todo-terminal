@@ -1,0 +1,113 @@
+Priority
+0 = urgent important (Critical)
+1 = not urgent important (Growth) --[DEFAULT]
+2 = urgent not important (Distraction)
+3 = not urgent not important (Waste)
+
+Get Algorithm
+    0, 1, 2, 3 priority
+    get random:
+        based on weigth of the quadrants
+        default:
+            20%
+            60%
+            20%
+            0%
+        waste of time allowed:
+            18%
+            58%
+            18%
+            6%
+        
+    get normal ask for:
+        energy levels:
+            high: q1
+            med: 
+            low
+
+        do you want to be productive?
+            if yes force quadrant 0 or 1:
+                25%
+                75%
+                0%
+                0%
+            else
+
+
+19/5/2025
+matured/full args commands (not its functionality as i might want to add more features)
+add 
+clear 
+get 
+help
+list
+random
+
+Needs implementation
+view
+version
+
+implement args
+rm
+edit
+
+
+
+
+list.priority 2 bit implementation:
+stored as a 8bit integer where every priority is just 2bits
+00 00 00 00
+
+writing count: 
+int x = ((n*2) + 7) / 8;
+write: x
+read: uint8_t * x
+
+reading: 
+uint8 priority = (list.priority[i] >> index%4) | 2
+
+writing:
+list.priority[i] &= (val << index%4)
+
+done implementation:
+
+0 0 0 0 0 0 0 0
+int x = ((n) + 7) / 8;
+write: x
+read: uint8_t * x
+
+reading: 
+uint8 done = (list.done[i] >> index%8) | 1
+
+writing:
+list.done[i] &= (val << index%8)
+
+#define roundoffNibble(x) ((x &= 0x0F), (--x), (x |= (x >> 1)), (x |= (x >> 2)), (++x))
+uint8_t readByte(uint8_t byte, uint8_t index, uint8_t nbits)
+{
+    roundoffNibble(nbits);
+    
+    return ((byte >> (index*nbits)) & ((1 << nbits) - 1));
+}
+
+uint8_t writeByte(uint8_t byte, uint8_t value, uint8_t index, uint8_t nbits)
+{
+    roundoffNibble(nbits);    
+    uint8_t mask = ~(((1 << nbits) - 1) << (index * nbits));
+        
+    return (byte & mask) | (value << (index * nbits)); // overwrite
+}
+
+save file implementation:
+title max size 0xFF (uint8);
+desc  max size 0xFF (uint8);
+
+
+size_t size; 
+uint8 *titleSize;
+char **title; //editable
+uint16 *descSize;
+char **desc; // editable
+long long *deadline; // editable
+long long *created;
+uint8_t *priority; 

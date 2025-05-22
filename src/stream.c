@@ -13,26 +13,22 @@
 #include "terminal_colors.h"
 #include "todo_error.h"
 #include "todo_get_alg.h"
+#include "stream_reader.h"
+#include "stream_writer.h"
+#include "bitwise.h"
 
 #include "todoio.h"
 
 void todo_stream_recover(TodoList *list, FILE *file);
-#define gc_binceil64(x) (--(x), (x) |= (x) >> 1, (x) |= (x) >> 2, (x) |= (x) >> 4, (x) |= (x) >> 8, (x) |= (x) >> 16, (x) |= (x) >> 32, ++(x))
-
-#define STREAM_STARTING_CAPCITY 16
-#define STREAM_CAPACITY_MARGIN 4
 
 static const char *TODO_FILE_HEADER = "TODO";
 static const char TODO_FILE_PADDING_START[] = {0xAB, 0xCD, 0xEF, 0xCC, 0xCC, 0xFE, 0xDC, 0xBA};
-static const char TODO_FILE_PADDING_END[] =   {0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
 
 
 // static int todo_stream_write_new(TodoList *list); // depreciated
 static void todo_stream_write_header(FILE *file);
 static int todo_stream_check_header(FILE *file);
 int todo_stream_init(TodoList *list, size_t capacity);
-static void stream_reader(TodoList *todolist, FILE *file);
-static void stream_writer(TodoList *todolist, FILE *file);
 // static void todo_stream_display_sorted(TodoList *list, unsigned int value);
 
 
@@ -43,76 +39,28 @@ static void stream_writer(TodoList *todolist, FILE *file);
 // get element
 // write to temp the new element
 // do to other stuff
-int todo_stream_write(TodoList *list) // capacity update
+#if defined(_WIN32) || defined(_WIN64)
+    #define TEMP_FILE_NAME "temp.temptodo"
+#else
+    #define TEMP_FILE_NAME ".temp.temptodo"
+#endif
+
+uint8_t todo_getBit(uint8_t *arr, size_t index, TodoListByteFields fieldEnum)
 {
-    if (list == NULL)
-    {
-        return -1;
-    }
-    
-    FILE *tempFile;
+    uint8_t byte = getByte_arr(arr, index, fieldEnum);
+    return readBits(byte, bitIndex(index, fieldEnum), fieldEnum);
+}
 
-    tempFile = fopen("temp.temptodo", "wb");
-    if (tempFile == NULL)
-    {
-        GC_LOG("temp failed");
-        return 2;
-    }
-
-    todo_stream_write_header(tempFile);
-    stream_writer(list, tempFile);
-
-    fclose(tempFile);
-    remove("todo.todo");
-    rename("temp.temptodo", "todo.todo");
-
-    return 0;
-        
+void todo_writeBit(uint8_t *arr, uint8_t value, size_t index, TodoListByteFields fieldEnum)
+{
+    uint8_t *byte = &getByte_arr(arr, index, fieldEnum);
+    writeBit_ptr(byte, value, bitIndex(index, fieldEnum), fieldEnum);
 }
 
 
-static void stream_writer(TodoList *todolist, FILE *file)
-{
-    size_t bytesWritten;
-    size_t n = todolist->size;
-
-    // number of elements
-    fwrite_align8(&n, sizeof(todolist->size), 1, file);
-
-    // title sizes
-    fwrite_align8(todolist->titleSize, sizeof(*todolist->titleSize), n, file);
-
-    // titles
-    bytesWritten = 0;
-    for (size_t i = 0; i < n; i++)
-    {
-        bytesWritten += fwrite(todolist->title[i], sizeof(char), todolist->titleSize[i], file);
-    }
-    fwrite_pad8(bytesWritten, file);
-    
-    // description sizes
-    fwrite_align8(todolist->descSize, sizeof(*todolist->descSize), n, file);
-
-    // descriptions
-    bytesWritten = 0;
-    for (size_t i = 0; i < n; i++)
-    {
-        bytesWritten += fwrite(todolist->desc[i], sizeof(char), todolist->descSize[i], file);
-    }
-    fwrite_pad8(bytesWritten, file);
-
-    // priority
-    fwrite_align8(todolist->priority, sizeof(*todolist->priority), n, file);
-
-    // created
-    fwrite_align8(todolist->created, sizeof(*todolist->created), n, file);
-    
-    // deadline
-    fwrite_align8(todolist->deadline, sizeof(*todolist->deadline), n, file);
-
-    fwrite_align8(&TODO_FILE_PADDING_END, sizeof(size_t), 1, file);
-}
-
+/* ======================================
+    Read
+   ====================================== */
 // READING prodecure
 // check if header exist;
 // get padding
@@ -126,10 +74,12 @@ int todo_stream_read(TodoList *todolist) // capacity update done
         return -1;
     }
     FILE *readwrite;    
-    readwrite = fopen("todo.todo", "rb");
+    
+    readwrite = fopen(get_todo_file_path(), "rb");
     if (readwrite == NULL)
     {
-        GC_LOG("reading failed.\n");
+        todo_stream_init(todolist, 0);
+        GC_LOG("aareading failed.\n");
         return 1;
     }
     
@@ -166,135 +116,37 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     return 0;
 }
 
-static void stream_reader(TodoList *todolist, FILE *file)
-{
-        // get number of elements
-    size_t size, bytesRead;
-    fread_align8(&size, sizeof(todolist->size), 1, file);
-    
-    // malloc
-    todo_stream_init(todolist, size);
-    todolist->size = size;
-    size_t *titleSize   = todolist->titleSize;
-    char **title        = todolist->title;
-    size_t *descSize    = todolist->descSize;
-    char **desc         = todolist->desc;
-    uint8_t *priority   = todolist->priority;
-    long long *created  = todolist->created;
-    long long *deadline = todolist->deadline;
-    
-    // get title sizes
-    fread_align8(titleSize, sizeof(*todolist->titleSize), size, file);
-    
-    // get titles
-    bytesRead = 0;
-    for (size_t i = 0; i < size; i++)
-    {
-        size_t n = titleSize[i];
-        title[i] =  malloc(sizeof(char) * (n+1));
-        
-        bytesRead += fread(title[i], sizeof(char), n, file);
-        title[i][n] = 0;
-    }
-    fread_pad8(bytesRead, file);
-    
-    // get desc sizes
-    fread_align8(descSize, sizeof(*todolist->descSize), size, file);
-    
-    // get descs
-    bytesRead = 0;
-    for (size_t i = 0; i < size; i++)
-    {
-        size_t n = descSize[i];
-        desc[i] =  malloc(sizeof(char) * (n+1));
-        
-        bytesRead += fread(desc[i], sizeof(char), n, file);
-        desc[i][n] = 0;
-    }
-    fread_pad8(bytesRead, file);
-
-    fread_align8(priority, sizeof(*todolist->priority), size, file);
-    fread_align8(created, sizeof(*todolist->created), size, file);    
-    fread_align8(deadline, sizeof(*todolist->deadline), size, file);
-}
-
-// initializes todolist stream
-int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
+/* ======================================
+    Write
+   ====================================== */
+int todo_stream_write(TodoList *list) // capacity update
 {
     if (list == NULL)
     {
         return -1;
     }
-
-    if (capacity < 16)
-    {
-        capacity = STREAM_STARTING_CAPCITY;
-    }
-    else 
-    {
-        gc_binceil64(capacity);
-    }
-
-    // size and capacity
-    list->capacity = capacity;
-    list->size = 0;
     
-    // mallocs
-    list->titleSize = malloc(sizeof(*list->titleSize)   * capacity);
-    if (list->titleSize == NULL)
+    FILE *tempFile;
+
+    tempFile = fopen(TEMP_FILE_NAME, "wb");
+    if (tempFile == NULL)
     {
-        return 1;
+        GC_LOG("temp failed");
+        return 2;
     }
 
-    list->title     = malloc(sizeof(*list->title)       * capacity);
-    if (list->title == NULL)
-    {
-        return 1;
-    }
-    
-    list->descSize  = malloc(sizeof(*list->descSize)    * capacity);
-    if (list->descSize == NULL)
-    {
-        return 1;
-    }
-    
-    list->desc      = malloc(sizeof(*list->desc)        * capacity);
-    if (list->desc == NULL)
-    {
-        return 1;
-    }
+    todo_stream_write_header(tempFile);
+    stream_writer(list, tempFile);
 
-    list->priority  = malloc(sizeof(*list->priority)    * capacity);
-    if (list->priority == NULL)
-    {
-        return 1;
-    }
+    fclose(tempFile);
+    remove(get_todo_file_path());
+    rename(TEMP_FILE_NAME, get_todo_file_path());
 
-    list->created   = malloc(sizeof(*list->created)     * capacity);
-    if (list->created == NULL)
-    {
-        return 1;
-    }
-
-    list->deadline  = malloc(sizeof(*list->deadline)    * capacity);
-    if (list->deadline == NULL)
-    {
-        return 1;
-    }
-    list->priorityScore = malloc(sizeof(*list->priorityScore)*capacity);
-    if (list->priorityScore == NULL)
-    {
-        return 1;
-    }
-    
-    list->sortedList = NULL;
-    list->energy = 0;
-    list->isAccending = 1;
-    list->timeToday = todo_get_timeToday();
-    list->sortingFunc = todo_tree_defaultCompare;
-
-    return 0;
+    return 0;       
 }
+
+
+
 
 // frees todolist
 void todo_stream_free_todolist(TodoList *todolist) // capacity update
@@ -325,6 +177,7 @@ void todo_stream_free_todolist(TodoList *todolist) // capacity update
     free(todolist->desc);
     
     free(todolist->priority);
+    free(todolist->done);
     free(todolist->created);
     free(todolist->deadline);
     
@@ -340,71 +193,7 @@ void todo_stream_free_todolist(TodoList *todolist) // capacity update
     todolist->created = NULL;
     todolist->deadline = NULL;
     todolist->sortedList = NULL;
-}
-
-// grow todolist stream
-int todo_stream_grow(TodoList *list, size_t newCapacity) // capacity update
-{
-    if (list == NULL)
-    {
-        return -1;
-    }
-
-    size_t capacity = newCapacity;
-    gc_binceil64(capacity);
-    
-    size_t *titleSize   = realloc(list->titleSize, capacity * sizeof(*(list->titleSize)));
-    if (titleSize == NULL)
-    {
-        return 1;
-    }
-    list->titleSize = titleSize;
-    
-    char **title        = realloc(list->title, capacity * sizeof(*(list->title)));
-    if (title == NULL)
-    {
-        return 1;
-    }
-    list->title = title;
-    
-    size_t *descSize    = realloc(list->descSize, capacity * sizeof(*(list->descSize)));
-    if (descSize == NULL)
-    {
-        return 1;
-    }
-    list->descSize = descSize;
-    
-    char **desc         = realloc(list->desc, capacity * sizeof(*(list->desc)));
-    if (desc == NULL)
-    {
-        return 1;
-    }
-    list->desc = desc;
-    
-    uint8_t *priority    = realloc(list->priority, capacity * sizeof(*(list->priority)));
-    if (priority == NULL)
-    {
-        return 1;
-    }
-    list->priority = priority;
-    
-    long long *created  = realloc(list->created, capacity * sizeof(*(list->created)));
-    if (created == NULL)
-    {
-        return 1;
-    }
-    list->created = created;
-    
-    long long *deadline = realloc(list->deadline, capacity * sizeof(*(list->deadline)));
-    if (deadline == NULL)
-    {
-        return 1;
-    }
-    list->deadline = deadline;
-    
-    list->capacity = capacity;
-
-    return 0;
+    todolist->done = NULL;
 }
 
 
@@ -421,20 +210,25 @@ int todo_stream_push(TodoList *list, TodoT *todo)
         return -2;
     }
 
+/*  // todo_stream_grow depreciated
     if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
     {
         todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
-    }
-    
-    size_t index = (list->size); 
-    
+    } 
+*/
+
+    size_t index = (list->size);
+
+    list->created[index]    = todo->created;
+    list->deadline[index]   = todo->deadline;
+    printf("%x\n",todo->created);
     list->titleSize[index]  = todo->titleSize;
     list->title[index]      = todo->title;
     list->descSize[index]   = todo->descSize;
     list->desc[index]       = todo->desc;
-    list->priority[index]   = todo->priority;
-    list->created[index]    = todo->created;
-    list->deadline[index]   = todo->deadline;
+
+    todo_writeBit(list->priority, todo->priority, index, TODO_PRIORITY_BITS);
+    todo_writeBit(list->done, todo->done, index, TODO_DONE_BITS);
     
     (list->size)++;
     return 0;
@@ -456,8 +250,9 @@ int todo_stream_remove(TodoList *list, size_t index)
     //void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare);
     (list->size)--;
     size_t end = list->size;
+    uint8_t *byteptr;
+    uint8_t bit_end;
 
-    
     todo_tree_remove(list, list->sortedList, index, todo_tree_priorityCompare);
     
     if (index != end)
@@ -468,7 +263,15 @@ int todo_stream_remove(TodoList *list, size_t index)
         list->title[index]      = list->title[end];
         list->descSize[index]   = list->descSize[end];
         list->desc[index]       = list->desc[end];
-        list->priority[index]   = list->priority[end];
+
+        byteptr = &getByte_arr(list->priority, index, TODO_PRIORITY_BITS);
+        bit_end = readBit_arr(list->priority, end, TODO_PRIORITY_BITS);
+        writeBit_ptr(byteptr, bit_end, index, TODO_PRIORITY_BITS);
+        
+        byteptr = &getByte_arr(list->done, index, TODO_DONE_BITS);
+        bit_end = readBit_arr(list->done, end, TODO_DONE_BITS);
+        writeBit_ptr(byteptr, bit_end, index, TODO_DONE_BITS);
+
         list->created[index]    = list->created[end];
         list->deadline[index]   = list->deadline[end];
         
@@ -478,35 +281,6 @@ int todo_stream_remove(TodoList *list, size_t index)
     
     
     // @bst remove the index and add index again
-    
-    return 0;
-}
-
-// removes by shifting
-int todo_stream_remove_inorder(TodoList *list, size_t index)
-{
-    if (list == NULL)
-    {
-        return -1;
-    }
-    
-    (list->size)--;
-    size_t end = list->size;
-
-    for (size_t i = index; i < end; i++)
-    {
-        list->titleSize[i]  = list->titleSize[i+1];
-        list->title[i]      = list->title[i+1];
-        list->descSize[i]   = list->descSize[i+1];
-        list->desc[i]       = list->desc[i+1];
-        list->priority[i]   = list->priority[i+1];
-        list->created[i]    = list->created[i+1];
-        list->deadline[i]   = list->deadline[i+1];
-    }
-    /* 
-        queue the remove cmd
-        an array of indices which we shift
-    */
     
     return 0;
 }
@@ -547,8 +321,6 @@ void todo_stream_sort(TodoList *list)
             todo_tree_push(list, root, i, compare);
         }
     }    
-    
-
 }
 
 void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
@@ -629,8 +401,6 @@ static void todo_stream_write_header(FILE *file)
     fwrite_align8(TODO_FILE_PADDING_START, sizeof(size_t), 1, file);
 }
 
-static int todo_stream_check_header(FILE *file)
-{
 /* 
     error codes: 
     -1 wrong file
@@ -639,6 +409,8 @@ static int todo_stream_check_header(FILE *file)
      1 invalid
     +2 represents version index in todo_version.h just subtract 2
 */
+static int todo_stream_check_header(FILE *file)
+{
     char header[5] = {};
     char version[20] = {};
     size_t padding;
@@ -668,99 +440,100 @@ static int todo_stream_check_header(FILE *file)
 }
 
 
-/* 
-    //.todo header must exist or else; 
-    TODO // must be 4 bytes
-
-    0xCCCCCCCCCCCCCCCC pading
-    
-    size_t n
-    
-    size_t titleSize[];
-    char *title[];
-    
-    size_t descSize[];
-    char *desc[];
-        
-    size_t priority[];
-    time_t created[];
-    time_t deadline[];
-    
-    0xCCCCCCCCCCCCCCCC pading
-*/
-
-/* 
-{
-typedef struct TodoT
-{
-    size_t titleSize;
-    size_t descSize;
-    size_t priority;
-    char *title;
-    char *desc;
-    time_t created;
-    time_t deadline;
-} TodoT; // 56bytes - nopads
-
-
-
-
-   
-
-
-static int todo_stream_write_new(TodoList *list)
+// grow todolist stream
+/* // depreciated
+int todo_stream_grow(TodoList *list, size_t newCapacity) // capacity update
 {
     if (list == NULL)
     {
         return -1;
     }
 
-    FILE *readwrite = fopen("todo.todo", "wb");
-    if (readwrite == NULL)
+    size_t capacity = newCapacity;
+    gc_binceil64(capacity);
+    
+    uint8_t *titleSize   = realloc(list->titleSize, capacity * sizeof(*(list->titleSize)));
+    if (titleSize == NULL)
     {
         return 1;
     }
-
-    size_t size = list->size;
-
-    todo_stream_write_header(readwrite);
+    list->titleSize = titleSize;
     
-    fwrite(&size, sizeof(list->size), 1, readwrite);
-
-    if (size > 0)
+    char **title        = realloc(list->title, capacity * sizeof(*(list->title)));
+    if (title == NULL)
     {
-        // title sizes
-        fwrite(list->titleSize, sizeof(*list->titleSize), size, readwrite);
-    
-        // titles
-        for (size_t i = 0; i < size; i++)
-        {
-            fwrite(list->title[i], sizeof(*list->title), list->titleSize[i], readwrite);
-        }
-        
-        // description sizes
-        fwrite(list->descSize, sizeof(*list->descSize), size, readwrite);
-    
-        // descriptions
-        for (size_t i = 0; i < size; i++)
-        {
-            fwrite(list->desc[i], sizeof(*list->desc), list->descSize[i], readwrite);
-        }
-    
-        // priority
-        fwrite(list->priority, sizeof(*list->priority), size, readwrite);
-    
-        // created
-        fwrite(list->created, sizeof(*list->created), size, readwrite);
-        
-        // deadline
-        fwrite(list->deadline, sizeof(*list->deadline), size, readwrite);
+        return 1;
     }
-
-    fwrite(&TODO_FILE_PADDING, sizeof(size_t), 1, readwrite);
+    list->title = title;
     
-    fclose(readwrite);
+    uint8_t *descSize    = realloc(list->descSize, capacity * sizeof(*(list->descSize)));
+    if (descSize == NULL)
+    {
+        return 1;
+    }
+    list->descSize = descSize;
+    
+    char **desc         = realloc(list->desc, capacity * sizeof(*(list->desc)));
+    if (desc == NULL)
+    {
+        return 1;
+    }
+    list->desc = desc;
+    
+    uint8_t *priority    = realloc(list->priority, capacity * sizeof(*(list->priority)));
+    if (priority == NULL)
+    {
+        return 1;
+    }
+    list->priority = priority;
+    
+    long long *created  = realloc(list->created, capacity * sizeof(*(list->created)));
+    if (created == NULL)
+    {
+        return 1;
+    }
+    list->created = created;
+    
+    long long *deadline = realloc(list->deadline, capacity * sizeof(*(list->deadline)));
+    if (deadline == NULL)
+    {
+        return 1;
+    }
+    list->deadline = deadline;
+    
+    list->capacity = capacity;
 
     return 0;
-} */
+}
+ */
 
+ /* 
+ // depreciated
+// removes by shifting
+int todo_stream_remove_inorder(TodoList *list, size_t index)
+{
+    if (list == NULL)
+    {
+        return -1;
+    }
+    
+    (list->size)--;
+    size_t end = list->size;
+
+    for (size_t i = index; i < end; i++)
+    {
+        list->titleSize[i]  = list->titleSize[i+1];
+        list->title[i]      = list->title[i+1];
+        list->descSize[i]   = list->descSize[i+1];
+        list->desc[i]       = list->desc[i+1];
+        list->priority[i]   = list->priority[i+1];
+        list->done[i]   = list->done[i+1];
+        list->created[i]    = list->created[i+1];
+        list->deadline[i]   = list->deadline[i+1];
+    }
+
+    
+    return 0;
+} 
+
+*/

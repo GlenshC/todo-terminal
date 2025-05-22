@@ -59,6 +59,20 @@ void cmd_view(TodoList *list, int argc, char *argv[])
     todo_cmd_view(list, argc, argv);
 }
 
+void cmd_done(TodoList *list, int argc, char *argv[])
+{
+    todo_sort(list, argc, argv);
+
+    todo_cmd_done(list, argc, argv); // implement
+}
+
+void cmd_undo(TodoList *list, int argc, char *argv[])
+{
+    todo_sort(list, argc, argv);
+    
+    todo_cmd_undo(list, argc, argv); //implement
+}
+
 void todo_readlist(TodoList *list)
 {
     todo_stream_read(list);

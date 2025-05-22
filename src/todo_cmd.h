@@ -11,10 +11,13 @@ typedef long long time_t;
 #define isbounded(val, start, end)   (start <= val && val <= end)
 #define isboundedx(val, start, end)   (start < val && val < end)
 
-void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority);
+void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, uint8_t priority);
 void todo_list(TodoList *list);
 void todo_edit(TodoList *list, unsigned int index);
 void todo_view(TodoList *list, unsigned int index);
+void todo_done(TodoList *list, unsigned int index);
+void todo_undo(TodoList *list, unsigned int index);
+void todo_clear();
 
 void todo_compute_priorityScores(TodoList *list);
 pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreTable, time_t timeToday);

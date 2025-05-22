@@ -3,6 +3,16 @@
 
 #include <stdint.h>
 
+#define TODO_PRIORITY_BITS 2
+#define TODO_DONE_BITS 1
+
+typedef enum TodoListByteFields
+{
+    TODO_FIELD_DONE = 1,
+    TODO_FIELD_PRIORITY = 2
+} TodoListByteFields;
+
+
 typedef long long pScore;
 
 typedef struct TNode{
@@ -22,15 +32,15 @@ typedef struct TodoDate
 
 typedef struct TodoT
 {
-    size_t titleSize;
-    char *title;
-    
-    size_t descSize;
-    char *desc;
-
-    size_t priority;
     long long created;
     long long deadline;
+    char *title;
+    char *desc;
+    
+    uint8_t titleSize;
+    uint8_t descSize;
+    uint8_t priority;
+    uint8_t done;
 } TodoT; // 56bytes - nopads
 
 struct DynamicTodoList;
@@ -44,14 +54,17 @@ typedef struct DynamicTodoList
     /* Writeable */
     size_t size; 
     
-    size_t *titleSize;
+    uint8_t *titleSize;
     char **title; //editable
     
-    size_t *descSize;
+    uint8_t *descSize;
     char **desc; // editable
+
     long long *deadline; // editable
     long long *created;
-    uint8_t *priority;
+
+    uint8_t *priority; // 2 bits
+    uint8_t *done; // 1 bit
     
     
     /* Runtime Data */

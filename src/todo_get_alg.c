@@ -21,8 +21,6 @@ static pScore TODO_ENERGY_WEIGHTS[] = {
     95,  90, 30,  0  // High Energy
 };
 
-#define MAX_DAYS 10
-#define MAX_POINTS 50
 /* ===========================================
     PRIORITY SCORE
    ===========================================*/
@@ -53,7 +51,8 @@ pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreT
 
     pScore weigth = 0, pressure = 0, age = 0;
 
-    weigth = scoreTable[list->priority[index]];
+    
+    weigth = scoreTable[todo_getBit(list->priority, index, TODO_PRIORITY_BITS)];
     
     if (list->deadline[index])
     {

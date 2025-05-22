@@ -15,12 +15,14 @@
 #define fwrite_pad8(bytes, file) fwrite_padding(bytes, 8, file)
 #define fread_pad8(bytes, file) fread_padding(bytes, 8, file)
 
-void aligned_fwrite(const void * restrict str, size_t size, size_t count, size_t alignment, FILE *file);
-void aligned_fread(void * restrict str, size_t size, size_t count, size_t alignment, FILE *file);
+void aligned_fwrite(const void * RESTRICT str, size_t size, size_t count, size_t alignment, FILE *file);
+void aligned_fread(void * RESTRICT str, size_t size, size_t count, size_t alignment, FILE *file);
 
 void fwrite_padding(size_t bytesWritten, size_t alignment, FILE *file);
 void fread_padding(size_t bytesRead, size_t alignment, FILE *file);
 
 char *todo_getinput(char *buffer, int maxCount);
+
+char *get_todo_file_path();
 
 #endif // GC_TODO_H included

@@ -56,7 +56,7 @@ time_t todo_get_timeToday(void)
     return time(NULL);
 }
 
-void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, unsigned int priority)
+void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate, uint8_t priority)
 {
     time_t raw_created = time(NULL);
     time_t raw_deadline = 0;
@@ -80,7 +80,6 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
         todotask.desc = "";
         todotask.descSize = 0;
     }
-    
     todotask.priority = priority;
     todotask.created = raw_created;
     todotask.deadline = raw_deadline;
@@ -138,13 +137,15 @@ void todo_edit(TodoList *list, unsigned int index)
     }
     emptyBuffer(inputBuffer);
 
-    printf(TERMINAL_COLOR_DIM "\nCurrent priority: " TERMINAL_COLOR_RESET "%s(%s) %hhu\n" TERMINAL_COLOR_RESET, TODO_QUADRANTS_COLOR[list->priority[index]], TODO_QUADRANTS[list->priority[index]], list->priority[index]);
+    uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
+
+    printf(TERMINAL_COLOR_DIM "\nCurrent priority: " TERMINAL_COLOR_RESET "%s(%s) %hhu\n" TERMINAL_COLOR_RESET, TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], priority);
     printf(TERMINAL_COLOR_DIM "Edit priority [%s, %s, %s, %s | 1 - 4] \n" TERMINAL_COLOR_DIM "(press Enter to keep unchanged): " TERMINAL_COLOR_RESET, TODO_COLORED_QUADRANTS[0], TODO_COLORED_QUADRANTS[1], TODO_COLORED_QUADRANTS[2], TODO_COLORED_QUADRANTS[3]);
 
     todo_getinput(inputBuffer, 1024);
     if (!isempty(inputBuffer))
     {
-        list->priority[index] = todo_priority_input(inputBuffer, list->priority[index]);
+        todo_writeBit(list->priority, todo_priority_input(inputBuffer, priority), index, TODO_PRIORITY_BITS);
     }
     emptyBuffer(inputBuffer);
 
@@ -185,6 +186,7 @@ void todo_view(TodoList *list, unsigned int index)
         todo_time_str(deadline, 20, list->deadline[index]);
     }
     todo_time_str(created, 20, list->created[index]);
+    uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
 
     printf(
         "\x1b[38;5;245m" "ID: %u\n" TERMINAL_COLOR_RESET
@@ -196,7 +198,7 @@ void todo_view(TodoList *list, unsigned int index)
         index + 1,
         list->title[index],
         list->desc[index],
-        TODO_QUADRANTS_COLOR[list->priority[index]], TODO_QUADRANTS[list->priority[index]],
+        TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority],
         TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], deadline,
         created
     );
@@ -234,6 +236,29 @@ void todo_cmd_get(TodoList *list)
     todo_stream_display_sorted(list, index);
 }
 
+void todo_clear()
+{
+    if (remove(get_todo_file_path()))
+    {
+        printf(TERMINAL_COLOR_RED "Failed to clear todo list.\n" TERMINAL_COLOR_RESET);
+        exit(EXIT_FAILURE);
+    }
+    
+    printf(TERMINAL_COLOR_GREEN "Cleared Todos.\n" TERMINAL_COLOR_RESET);
+    exit(EXIT_SUCCESS);
+}
+
+void todo_done(TodoList *list, unsigned int index)
+{
+    list->done[index] = 1;
+}
+
+void todo_undo(TodoList *list, unsigned int index)
+{
+    list->done[index] = 0;
+}
+
+
 /* ===========================================
     HELPER FUNCTIONS
    ===========================================*/
@@ -248,11 +273,13 @@ static void todo_stream_display_sorted(TodoList *list, unsigned int index)
     {
         todo_time_str(buffer, 20, list->deadline[index]);
     }
+    uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
+
     printf(
         "%4u  %s%-20.18s" TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_GRAY " %-40.38s " TERMINAL_COLOR_RESET "%s%-15.13s" TERMINAL_COLOR_RESET " \x1b[38;5;%dm%-16.14s\n" TERMINAL_COLOR_RESET, 
         index+1, 
-        TODO_QUADRANTS_COLOR[list->priority[index]], list->title[index], list->desc[index], 
-        TODO_QUADRANTS_COLOR[list->priority[index]], TODO_QUADRANTS[list->priority[index]], 
+        TODO_QUADRANTS_COLOR[priority], list->title[index], list->desc[index], 
+        TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], 
         TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], buffer);
 }
 
@@ -263,11 +290,12 @@ static void todo_stream_display_debug_sorted(TodoList *list, unsigned int index)
     {
         todo_time_str(buffer, 20, list->deadline[index]);
     }
+    uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
     printf(
         "%4u  %s%-20.18s" TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_GRAY " %-40.38s " TERMINAL_COLOR_RESET "%s%-15.13s" TERMINAL_COLOR_RESET " \x1b[38;5;%dm%-16.14s" TERMINAL_COLOR_RESET " %lld\n", 
         index+1, 
-        TODO_QUADRANTS_COLOR[list->priority[index]], list->title[index], list->desc[index], 
-        TODO_QUADRANTS_COLOR[list->priority[index]], TODO_QUADRANTS[list->priority[index]], 
+        TODO_QUADRANTS_COLOR[priority], list->title[index], list->desc[index], 
+        TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], 
         TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], buffer,
         list->priorityScore[index]
     );
@@ -283,9 +311,15 @@ static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw)
     int year_diff = 0, mon_diff = 0, day_diff = 0; 
     struct tm *today_tm = localtime(&todayRaw);
     struct tm result_tm = *today_tm;
-        
-    year_diff = (tododate->year) - (today_tm->tm_year + 1900);
-    mon_diff = (tododate->month) - (today_tm->tm_mon + 1);
+    
+    if (tododate->year)
+    {
+        year_diff = (tododate->year) - (today_tm->tm_year + 1900);
+    }
+    if (tododate->month)
+    {
+        mon_diff = (tododate->month) - (today_tm->tm_mon + 1);
+    }
     day_diff = (tododate->day) - (today_tm->tm_mday);
     
     if (year_diff > 0)
@@ -321,21 +355,19 @@ static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw)
 static unsigned int todo_get_deadlineColor(time_t deadline, time_t today)
 {
 /*    6   12   24   48   72  120  168 */
-    int timeLeft = (deadline - today) / (60*60);
-    if (timeLeft < 6)
+    float timeLeft = (deadline - today) / (60.0f*60.0f);
+    if (timeLeft < (MAX_HOURS * 0.05))
         return 0;
-    else if (timeLeft < 12)
+    else if (timeLeft < (MAX_HOURS * 0.1))
         return 1;
-    else if (timeLeft < 24)
+    else if (timeLeft < (MAX_HOURS * 0.5))
         return 2;
-    else if (timeLeft < 38)
+    else if (timeLeft < (MAX_HOURS * 0.65))
         return 3;
-    else if (timeLeft < 72)
+    else if (timeLeft < (MAX_HOURS * 0.8))
         return 4;
-    else if (timeLeft < 120)
+    else if (timeLeft < (MAX_HOURS))
         return 5;
-    else if (timeLeft < 168)
-        return 6;
 
     return 7;
 } // 1970

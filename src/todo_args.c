@@ -12,12 +12,15 @@
 #include "stream.h"
 #include "todo_error.h"
 
+#include "todoio.h"
+
 #include "todo_args.h"
 
 
 static char *todo_cmd_add_arg_desciription(int index, int argc, char *argv[]);
-static unsigned int todo_cmd_add_arg_priority(int index, int argc, char *argv[]);
+static uint8_t todo_cmd_add_arg_priority(int index, int argc, char *argv[]);
 static TodoDate *todo_cmd_add_arg_deadline(TodoDate *date, int index, int argc, char *argv[]);
+static size_t todo_inputItemID(TodoList * list, size_t item_id, const char *displayText);
 
 #define ADD_ARG_TITLE 2
 // #define ADD_ARG_DESC  3
@@ -26,7 +29,7 @@ void todo_cmd_add(TodoList *list, int argc, char *argv[])
     char *description = NULL;
     TodoDate date = {};
     TodoDate *dateptr = NULL;
-    unsigned int priority = 1;
+    uint8_t priority = 1;
 
     if (targ_get(ADD_ARG_TITLE, NULL) == NULL)
     {
@@ -158,30 +161,7 @@ void todo_cmd_edit(TodoList *list, int argc, char *argv[])
 
     size_t item_id = 0;
     item_id = todo_arg_id(argc, argv, 2);
-    
-    if (item_id == 0)
-    {
-        todo_list(list);
-
-        char buffer[32];
-        printf("\nEnter item ID to " TERMINAL_BOLD_YELLOW "edit: " TERMINAL_COLOR_RESET);
-        fgets(buffer, 32, stdin);
-        buffer[strcspn(buffer, "\n")] = 0;
-    
-        if (strcmp("q", buffer) == 0)
-        {
-            todo_stream_write(list);
-            exit(EXIT_SUCCESS);
-        }
-        
-        item_id = strtoull(buffer, NULL, 0);
-    
-        if (item_id == 0)
-        {
-            todo_error(TODO_ERROR_INVALID_ID);
-            return;
-        }
-    }
+    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "edit: " TERMINAL_COLOR_RESET);
 
     // printf("item id: %llu\n", item_id);
     todo_edit(list, item_id-1);
@@ -198,32 +178,7 @@ void todo_cmd_view(TodoList *list, int argc, char *argv[])
 
     size_t item_id = 0;
     item_id = todo_arg_id(argc, argv, 2);
-    
-    if (item_id == 0)
-    {
-        todo_list(list);
-
-        char buffer[32];
-        printf("\nEnter item ID to " TERMINAL_BOLD_BLUE "view: " TERMINAL_COLOR_RESET);
-        
-        fgets(buffer, 32, stdin);
-        buffer[strcspn(buffer, "\n")] = 0;
-    
-        if (strcmp("q", buffer) == 0)
-        {
-            todo_stream_write(list);
-            exit(EXIT_SUCCESS);
-        }
-        
-        size_t index = 0;
-        index = strtoull(buffer, NULL, 0);
-    
-        if (index == 0)
-        {
-            todo_error(TODO_ERROR_INVALID_ID);
-            return;
-        }
-    }
+    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_BLUE "view: " TERMINAL_COLOR_RESET);
 
     todo_view(list, item_id-1);
     printf("\n");
@@ -239,33 +194,82 @@ void todo_cmd_remove(TodoList *list, int argc, char *argv[])
     
     size_t item_id = 0;
     item_id = todo_arg_id(argc, argv, 2);
+    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_RED "remove: " TERMINAL_COLOR_RESET);
 
-    if (item_id == 0)
-    {
-        todo_list(list);
-
-        char buffer[32];
-        printf("\nEnter item ID to " TERMINAL_BOLD_RED "remove: " TERMINAL_COLOR_RESET);
-        fgets(buffer, 32, stdin);
-        buffer[strcspn(buffer, "\n")] = 0;
-        if (strcmp("q", buffer) == 0)
-        {
-            todo_stream_write(list);
-            exit(EXIT_SUCCESS);
-        }
-        item_id = strtoull(buffer, NULL, 0);
-    
-        if (item_id == 0)
-        {
-            todo_error(TODO_ERROR_INVALID_ID);
-            return;
-        }
-    }
-
-    
     todo_stream_remove(list, item_id-1);
     printf("\n");
 }
+
+void todo_cmd_clear(int argc, char *argv[])
+{   
+    // 1    2      3
+    // 0    1      2
+    // todo clear --force
+    if (argc == 3){
+        if (argv[2][0] == '-' && argv[2][1] == '-')
+        {
+            if (gc_str_strcmp("--force", argv[2]) == 0)
+            {
+                todo_clear();
+                return;
+            }
+        }
+        else
+        {
+            todo_help_command(COMMAND_CLEAR);
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    char buffer[16];
+
+    printf("Reset todo list? [Yes/no]: ");
+    fgets(buffer, 16, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
+    if (strcmp(buffer, "Yes") == 0)
+    {
+        todo_clear();
+    }
+    else
+    {
+        printf(TERMINAL_COLOR_RED "Aborting...\n" TERMINAL_COLOR_RESET);
+    }
+}
+
+void todo_cmd_done(TodoList *list, int argc, char *argv[])
+{
+    if (list == NULL || list->size < 1)
+    {
+        todo_error(TODO_ERROR_EMPTY);
+        return;
+    }
+
+    size_t item_id = 0;
+    item_id = todo_arg_id(argc, argv, 2);
+    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "mark done: " TERMINAL_COLOR_RESET);
+    
+    todo_done(list, item_id-1);
+}
+void todo_cmd_undo(TodoList *list, int argc, char *argv[])
+{
+    if (list == NULL || list->size < 1)
+    {
+        todo_error(TODO_ERROR_EMPTY);
+        return;
+    }
+
+    size_t item_id = 0;
+    item_id = todo_arg_id(argc, argv, 2);
+    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "undo: " TERMINAL_COLOR_RESET);
+    
+    todo_undo(list, item_id-1);
+
+}
+
+
+/* ===================================================================
+    ARGSSSS 
+   ===================================================================*/
 
 unsigned int todo_arg_id(int argc, char *argv[], unsigned int index)
 {
@@ -307,52 +311,38 @@ unsigned int todo_get_args(int argc, char *argv[], unsigned int index)
     return 0;
 }
 
-void todo_cmd_clear(int argc, char *argv[])
-{   
-    // 1    2      3
-    // 0    1      2
-    // todo clear --force
-    if (argc == 3){
-        if (argv[2][0] == '-' && argv[2][1] == '-')
-        {
-            if (gc_str_strcmp("--force", argv[2]) == 0)
-            {
-                remove("todo.todo");
-                return;
-            }
-        }
-        else
-        {
-            todo_help_command(COMMAND_CLEAR);
-            exit(EXIT_FAILURE);
-        }
-    }
-    
-    char buffer[16];
-
-    printf("Reset todo list? [Yes/no]: ");
-    fgets(buffer, 16, stdin);
-    buffer[strcspn(buffer, "\n")] = 0;
-    if (strcmp(buffer, "Yes") == 0)
-    {
-        if (remove("todo.todo"))
-        {
-            printf(TERMINAL_COLOR_RED "Failed to clear todo list.\n" TERMINAL_COLOR_RESET);
-            exit(EXIT_FAILURE);
-        }
-        
-        printf(TERMINAL_COLOR_GREEN "Cleared Todos.\n" TERMINAL_COLOR_RESET);
-        exit(EXIT_SUCCESS);
-    }
-    else
-    {
-        printf(TERMINAL_COLOR_RED "Aborting...\n" TERMINAL_COLOR_RESET);
-    }
-}
-
 /* ======================================
    PRIVATE FUNCTIONS
    ====================================== */
+
+static size_t todo_inputItemID(TodoList * list, size_t item_id, const char *displayText)
+{
+    if (item_id == 0)
+    {
+        todo_list(list);
+
+        char buffer[32];
+        printf(displayText);
+        fgets(buffer, 32, stdin);
+        buffer[strcspn(buffer, "\n")] = 0;
+    
+        if (strcmp("q", buffer) == 0)
+        {
+            todo_stream_write(list);
+            exit(EXIT_SUCCESS);
+        }
+        
+        item_id = strtoull(buffer, NULL, 0);
+        
+        if (item_id == 0)
+        {
+            todo_error(TODO_ERROR_INVALID_ID);
+            todo_stream_write(list);
+            exit(EXIT_SUCCESS);
+        }
+    }
+    return item_id;
+}
 
 static TodoDate *todo_cmd_add_arg_deadline(TodoDate *date, int index, int argc, char *argv[])
 {
@@ -375,7 +365,7 @@ static TodoDate *todo_cmd_add_arg_deadline(TodoDate *date, int index, int argc, 
     return NULL;
 }
 
-static unsigned int todo_cmd_add_arg_priority(int index, int argc, char *argv[])
+static uint8_t todo_cmd_add_arg_priority(int index, int argc, char *argv[])
 {
     
     char *nextarg = targ_get(index+1, NULL);
@@ -400,10 +390,11 @@ static char *todo_cmd_add_arg_desciription(int index, int argc, char *argv[])
     }
     return nextarg;
 }
-
-unsigned int todo_priority_input(char *str, unsigned int defaultpriority) 
+// 0   1  2  3
+// 00 01 10 11
+uint8_t todo_priority_input(char *str, uint8_t defaultpriority) 
 {
-    unsigned int priority = defaultpriority;
+    uint8_t priority = defaultpriority;
     if (isdigit(str[0]))
     {
         priority = strtoul(str, NULL, 0);

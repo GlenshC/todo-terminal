@@ -5,9 +5,18 @@ Redesign:
     priority system - DONE
     ugent and important - DONE
 
-Add:
+ADD:
 help with invalid command usage 
+add age decay for no deadline (increases the points 1pt/week) (might need to balance it out)
+add [todo done | todo undo]?
+list filters (like showing only the specific priorities or filtering out whats done)
+
 add list args descending and ascending
+waste items always ties so maybe introduce -+5pts randomness
+
+REDESIGN:
+optimize save file (see devlog)
+list.priority can be stored as 2bits (see devlog)
 
 fix:
 
@@ -15,6 +24,7 @@ fixed:
 free_todolist
 
 ADDED
+! ADD SAVE DIR. (because its saving on where the current working dir of the terminal)
 todo edit - editing must accept words as input on priority
 todo rm args
 todo edit args
