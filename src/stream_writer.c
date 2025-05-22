@@ -41,10 +41,11 @@ void stream_writer(TodoList *todolist, FILE *file)
     // description
     bytesWritten = 0;
     fwrite_align8(todolist->descSize, sizeof(*todolist->descSize), n, file);
-    for (size_t i = 0, bytesWritten = 0; i < n; i++)
+    for (size_t i = 0; i < n; i++)
     {
         bytesWritten += fwrite(todolist->desc[i], sizeof(char), todolist->descSize[i], file);
     }
+    printf("bytesWritten = %llu\n", bytesWritten);
     fwrite_pad8(bytesWritten, file);
 
     // priority

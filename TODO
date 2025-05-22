@@ -19,6 +19,7 @@ optimize save file (see devlog)
 list.priority can be stored as 2bits (see devlog)
 
 fix:
+edit string sizes not changed after edit
 
 fixed:
 free_todolist

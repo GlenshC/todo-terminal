@@ -33,12 +33,15 @@ void stream_reader(TodoList *todolist, FILE *file)
     // malloc
     todo_stream_init(todolist, size);
     todolist->size = size;
-    long long *created  = todolist->created;
-    long long *deadline = todolist->deadline;
+    
+    uint32_t *created  = todolist->created;
+    uint32_t *deadline = todolist->deadline;
+
     uint8_t *titleSize   = todolist->titleSize;
     char **title        = todolist->title;
     uint8_t *descSize    = todolist->descSize;
     char **desc         = todolist->desc;
+    
     uint8_t *priority   = todolist->priority;
     uint8_t *done   = todolist->done;
     
@@ -143,6 +146,7 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     {
         return 1;
     }
+    
     list->priorityScore = malloc(sizeof(*list->priorityScore)*capacity);
     if (list->priorityScore == NULL)
     {

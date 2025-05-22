@@ -8,6 +8,8 @@
 
 #define MIN(a, b) ((a < b) ? (a) : (b))
 #define MAX(a, b) ((a > b) ? (a) : (b))
+
+#undef CLAMP
 #define CLAMP(val, min, max) (((val) < (min)) ? (min) : (((val) > (max)) ? (max) : (val))) 
 
 
@@ -56,9 +58,9 @@ pScore todo_get_priorityScore(TodoList *list, unsigned int index, pScore *scoreT
     
     if (list->deadline[index])
     {
-        pressure = todo_get_todopressure(list->deadline[index], timeToday);
+        pressure = todo_get_todopressure(list->deadline[index]*SECONDS_IN_DAY, timeToday);
     }
-    age = todo_get_todoage(list->created[index], timeToday);
+    age = todo_get_todoage(list->created[index]*SECONDS_IN_MIN, timeToday);
     return weigth + pressure + age;
 }
 

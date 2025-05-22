@@ -17,6 +17,9 @@
 
 #include "todo_cmd.h"
 
+
+
+
 #define todo_display_table_header() printf(TERMINAL_COLOR_DIM "%-4s  %-20s %-40s %-15s %-16s\n" TERMINAL_COLOR_RESET, "ID" , "Title", "Description", "Priority", "Deadline")
 #define todo_display_table_debug_header() printf(TERMINAL_COLOR_DIM "%-4s  %-20s %-40s %-15s %-16s PScore\n" TERMINAL_COLOR_RESET, "ID", "Title", "Description", "Priority", "Deadline")
 
@@ -65,7 +68,6 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
         raw_deadline = todo_date_createtime(tododate, raw_created);
     }
 
-    
     TodoT todotask = {};
     
     todotask.titleSize = strlen(title);
@@ -73,8 +75,8 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
     
     if (description != NULL)
     {
-        todotask.desc = description;
         todotask.descSize = strlen(description);
+        todotask.desc = description;
     } else 
     {
         todotask.desc = "";
@@ -86,7 +88,6 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
     
     todo_stream_push(list, &todotask);
 }
-
 
 void todo_list(TodoList *list)
 {
@@ -271,7 +272,7 @@ static void todo_stream_display_sorted(TodoList *list, unsigned int index)
     char buffer[20] = {};
     if (list->deadline[index])
     {
-        todo_time_str(buffer, 20, list->deadline[index]);
+        todo_time_str(buffer, 20, list->deadline[index] * SECONDS_IN_DAY);
     }
     uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
 
@@ -288,7 +289,7 @@ static void todo_stream_display_debug_sorted(TodoList *list, unsigned int index)
     char buffer[20] = {};
     if (list->deadline[index])
     {
-        todo_time_str(buffer, 20, list->deadline[index]);
+        todo_time_str(buffer, 20, list->deadline[index] * SECONDS_IN_DAY);
     }
     uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
     printf(
@@ -355,7 +356,7 @@ static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw)
 static unsigned int todo_get_deadlineColor(time_t deadline, time_t today)
 {
 /*    6   12   24   48   72  120  168 */
-    float timeLeft = (deadline - today) / (60.0f*60.0f);
+    float timeLeft = ((deadline*SECONDS_IN_DAY) - today) / (60.0f*60.0f);
     if (timeLeft < (MAX_HOURS * 0.05))
         return 0;
     else if (timeLeft < (MAX_HOURS * 0.1))

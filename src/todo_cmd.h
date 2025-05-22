@@ -5,6 +5,7 @@
 // #include "gc_string.h"
 typedef long long time_t;
 
+
 #define targ_get(index, default) (((index) < argc) ? (argv[(index)]) : (default))
 #define todo_cmd(cmd) strcmp(argv[1], cmd)
 #define todo_cmdi(cmd, index) strcmp(argv[(index)], cmd)

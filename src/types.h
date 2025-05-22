@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define SECONDS_IN_DAY (86400)
+#define SECONDS_IN_HOUR (3600)
+#define SECONDS_IN_MIN (60)
+
 #define TODO_PRIORITY_BITS 2
 #define TODO_DONE_BITS 1
 
@@ -32,10 +36,10 @@ typedef struct TodoDate
 
 typedef struct TodoT
 {
-    long long created;
-    long long deadline;
     char *title;
     char *desc;
+    long long created;
+    long long deadline;
     
     uint8_t titleSize;
     uint8_t descSize;
@@ -54,14 +58,14 @@ typedef struct DynamicTodoList
     /* Writeable */
     size_t size; 
     
+    uint32_t *created; // STORED IN MINUTES
+    uint32_t *deadline; // STORED IN DAYS
+    
     uint8_t *titleSize;
     char **title; //editable
     
     uint8_t *descSize;
     char **desc; // editable
-
-    long long *deadline; // editable
-    long long *created;
 
     uint8_t *priority; // 2 bits
     uint8_t *done; // 1 bit

@@ -19,6 +19,9 @@
 
 #include "todoio.h"
 
+// #define CLAMP(val, min, max) (((val) <= (min)) ? (min) : (((val) >= (max)) ? (max) : (val)))
+#define UCLAMP(val, max) (((val) > (max)) ? (max) : (val))
+
 void todo_stream_recover(TodoList *list, FILE *file);
 
 static const char *TODO_FILE_HEADER = "TODO";
@@ -210,21 +213,13 @@ int todo_stream_push(TodoList *list, TodoT *todo)
         return -2;
     }
 
-/*  // todo_stream_grow depreciated
-    if ((list->size + STREAM_CAPACITY_MARGIN) >= list->capacity)
-    {
-        todo_stream_grow(list, list->size + STREAM_CAPACITY_MARGIN);
-    } 
-*/
-
     size_t index = (list->size);
 
-    list->created[index]    = todo->created;
-    list->deadline[index]   = todo->deadline;
-    printf("%x\n",todo->created);
-    list->titleSize[index]  = todo->titleSize;
+    list->created[index]    = (todo->created + (SECONDS_IN_MIN - 1)) / SECONDS_IN_MIN;
+    list->deadline[index]   = (todo->deadline + (SECONDS_IN_DAY - 1)) / SECONDS_IN_DAY;
+    list->titleSize[index]  = UCLAMP(todo->titleSize, 255); 
     list->title[index]      = todo->title;
-    list->descSize[index]   = todo->descSize;
+    list->descSize[index]   = UCLAMP(todo->descSize, 255);
     list->desc[index]       = todo->desc;
 
     todo_writeBit(list->priority, todo->priority, index, TODO_PRIORITY_BITS);
