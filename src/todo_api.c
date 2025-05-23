@@ -21,8 +21,6 @@ void cmd_add(TodoList *list, int argc, char *argv[])
 
 void cmd_remove(TodoList *list, int argc, char *argv[])
 {
-    todo_sort(list, argc, argv);
-
     todo_cmd_remove(list, argc, argv);
 }
 
@@ -47,29 +45,21 @@ void cmd_random(TodoList *list, int argc, char *argv[])
 
 void cmd_edit(TodoList *list, int argc, char *argv[])
 {
-    todo_sort(list, argc, argv);
-
     todo_cmd_edit(list, argc, argv);
 }
 
 void cmd_view(TodoList *list, int argc, char *argv[])
 {
-    todo_sort(list, argc, argv);
-
     todo_cmd_view(list, argc, argv);
 }
 
 void cmd_done(TodoList *list, int argc, char *argv[])
 {
-    todo_sort(list, argc, argv);
-
     todo_cmd_done(list, argc, argv); // implement
 }
 
 void cmd_undo(TodoList *list, int argc, char *argv[])
-{
-    todo_sort(list, argc, argv);
-    
+{    
     todo_cmd_undo(list, argc, argv); //implement
 }
 

@@ -79,6 +79,14 @@ void todo_CLI(int argc, char *argv[])
         {
             cmd_view(&list, argc, argv);   
         }
+        else if (todo_cmd("done") == 0)
+        {
+            cmd_done(&list, argc, argv);   
+        }
+        else if (todo_cmd("undo") == 0)
+        {
+            cmd_undo(&list, argc, argv);   
+        }
         else 
         {
             todo_help_error(argv[1]);            

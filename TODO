@@ -6,17 +6,17 @@ Redesign:
     ugent and important - DONE
 
 ADD:
-help with invalid command usage 
-add age decay for no deadline (increases the points 1pt/week) (might need to balance it out)
 add [todo done | todo undo]?
-list filters (like showing only the specific priorities or filtering out whats done)
+help with invalid command usage 
+DOCUMENT -r --reverse as sorting in descending order
+DOCUMENT --sort -s and -E in list/sorting
 
-add list args descending and ascending
+list filters (like showing only the specific priorities or filtering out whats done)
+add age decay for no deadline (increases the points 1pt/week) (might need to balance it out)
 waste items always ties so maybe introduce -+5pts randomness
 
 REDESIGN:
-optimize save file (see devlog)
-list.priority can be stored as 2bits (see devlog)
+soring arg from --priority to --sort priority or -s priority
 
 fix:
 edit string sizes not changed after edit
@@ -25,6 +25,10 @@ fixed:
 free_todolist
 
 ADDED
+FASTER edit, remove, view when id arg is provided (skips sorting)
+add list args descending and ascending (-r | --reverse)
+optimize save file (see devlog)
+list.priority can be stored as 2bits (see devlog)
 ! ADD SAVE DIR. (because its saving on where the current working dir of the terminal)
 todo edit - editing must accept words as input on priority
 todo rm args
@@ -35,4 +39,7 @@ todo view
 todo version
 bin serialization version (for updating the app) // byte alignment
 displaying strings can destroy UI 
-
+bin serialization:
+    created, deadline stored in 32 bits
+    priority stored in 2 bits
+    done stored in 1 bit

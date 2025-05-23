@@ -64,6 +64,23 @@ const TodoCommand TODO_COMMANDS[] = {
         0, 0, 1
     },
     {
+        "done",
+        "Marks a todo as completed.",
+        "Marks a specified todo item as done. If no ID is provided, a list of todos will be shown and you'll be prompted to select one.",
+        "todo done [<id>]",
+        (const char *[])
+        {
+            "todo done 3",
+            "todo done"
+        },
+        (TodoCmdArguments[])
+        {
+            { "id", "ID of the todo item to mark as done (optional)" }
+        },
+        NULL,
+        2, 1, 0
+    },
+    {
         "edit",
         "Edits a todo item.",
         "Edits a todo item. If an id is provided, edits that item directly; otherwise, shows the todo list for selection.",
@@ -161,6 +178,23 @@ const TodoCommand TODO_COMMANDS[] = {
             { "-b", "--best", "Sort todos by recommended action priority" }
         },
         0, 1, 5
+    },
+    {
+        "undo",
+        "Marks a todo as not completed.",
+        "Reverts a previously completed todo item back to active. If no ID is provided, a list of done todos will be shown and you'll be prompted to select one.",
+        "todo undo [<id>]",
+        (const char *[])
+        {
+            "todo undo 3",
+            "todo undo"
+        },
+        (TodoCmdArguments[])
+        {
+            { "id", "ID of the todo item to mark as not done (optional)" }
+        },
+        NULL,
+        2, 1, 0
     },
     {
         "version",

@@ -1,6 +1,7 @@
 #include "stream_writer.h"
 #include "todoio.h"
 #include "bitwise.h"
+#include "gc_logs.h"
 
 /* 
     -- PADDING_START --
@@ -32,6 +33,7 @@ void stream_writer(TodoList *todolist, FILE *file)
     // title
     bytesWritten = 0;
     fwrite_align8(todolist->titleSize, sizeof(*todolist->titleSize), n, file);
+    
     for (size_t i = 0; i < n; i++)
     {
         bytesWritten += fwrite(todolist->title[i], sizeof(char), todolist->titleSize[i], file);
@@ -43,9 +45,9 @@ void stream_writer(TodoList *todolist, FILE *file)
     fwrite_align8(todolist->descSize, sizeof(*todolist->descSize), n, file);
     for (size_t i = 0; i < n; i++)
     {
+        // GC_LOG("desc[%hhu]: %s\n", todolist->descSize[i], todolist->desc[i]);
         bytesWritten += fwrite(todolist->desc[i], sizeof(char), todolist->descSize[i], file);
     }
-    printf("bytesWritten = %llu\n", bytesWritten);
     fwrite_pad8(bytesWritten, file);
 
     // priority

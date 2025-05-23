@@ -16,7 +16,7 @@
 #define roundoffNibble(x) ((x &= 0x0F), (--x), (x |= (x >> 1)), (x |= (x >> 2)), (++x))
 
 #define sizeofBytes(n, nbits) ((size_t)((((n)*(nbits)) + 7) / 8))
-#define byteIndex(index, nbits) ((size_t)((((index)*(nbits))+1)/8))
+#define byteIndex(index, nbits) ((size_t)((((index)*(nbits)))/8))
 
 // undefined behavior when nbits = 0 or nbits > 8
 #define bitIndex(index, nbits) ((size_t)((index) % (8/(nbits)))) 

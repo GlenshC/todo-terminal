@@ -17,9 +17,7 @@
 
 #include "todo_cmd.h"
 
-
-
-
+#define UCLAMP(val, max) (((val) > (max)) ? (max) : (val))
 #define todo_display_table_header() printf(TERMINAL_COLOR_DIM "%-4s  %-20s %-40s %-15s %-16s\n" TERMINAL_COLOR_RESET, "ID" , "Title", "Description", "Priority", "Deadline")
 #define todo_display_table_debug_header() printf(TERMINAL_COLOR_DIM "%-4s  %-20s %-40s %-15s %-16s PScore\n" TERMINAL_COLOR_RESET, "ID", "Title", "Description", "Priority", "Deadline")
 
@@ -63,6 +61,7 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
 {
     time_t raw_created = time(NULL);
     time_t raw_deadline = 0;
+    size_t title_size = 0, desc_size = 0;
     if (tododate != NULL)
     {
         raw_deadline = todo_date_createtime(tododate, raw_created);
@@ -70,13 +69,18 @@ void todo_add(TodoList *list, char *title, char *description, TodoDate *tododate
 
     TodoT todotask = {};
     
-    todotask.titleSize = strlen(title);
+    
+    title_size = strlen(title);
+    todotask.titleSize = UCLAMP(title_size, FIELD_TITLE_MAX);
     todotask.title = title;
     
     if (description != NULL)
     {
-        todotask.descSize = strlen(description);
+        desc_size = strlen(description);
+        todotask.descSize = UCLAMP(desc_size, FIELD_DESCRIPTION_MAX);
         todotask.desc = description;
+        // GC_LOG("descSize %hhu, str = %s\n", todotask.descSize, description);
+
     } else 
     {
         todotask.desc = "";
@@ -114,16 +118,16 @@ void todo_edit(TodoList *list, unsigned int index)
     char *argtokens[TODO_MAX_TOKENS] = {};
     TodoDate date = {};
     char ftimeBuffer[20] = {};
-    char inputBuffer[1024] = {};
+    char inputBuffer[INPUT_MAX_BUFFERS] = {};
     emptyBuffer(inputBuffer);
 
     printf(TERMINAL_COLOR_DIM "\nCurrent title: " TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_YELLOW "%s\n" TERMINAL_COLOR_RESET, list->title[index]);
     printf(TERMINAL_COLOR_DIM "Edit title (press Enter to keep unchanged): " TERMINAL_COLOR_RESET);
     
-    todo_getinput(inputBuffer, 1024);
+    todo_getinput(inputBuffer, INPUT_MAX_BUFFERS);
     if (!isempty(inputBuffer))
     {
-        list->titleSize[index] = GC_STR_strcpy(list->title[index], inputBuffer, 0, 1024);
+        list->titleSize[index] = GC_STR_strcpy(list->title[index], inputBuffer, 0, FIELD_TITLE_MAX);
         
     }
     emptyBuffer(inputBuffer);
@@ -131,10 +135,10 @@ void todo_edit(TodoList *list, unsigned int index)
     printf(TERMINAL_COLOR_DIM "\nCurrent description: " TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_YELLOW "%s\n" TERMINAL_COLOR_RESET, list->desc[index]);
     printf(TERMINAL_COLOR_DIM "Edit description (press Enter to keep unchanged): " TERMINAL_COLOR_RESET);
 
-    todo_getinput(inputBuffer, 1024);
+    todo_getinput(inputBuffer, INPUT_MAX_BUFFERS);
     if (!isempty(inputBuffer))
     {
-        list->descSize[index] = GC_STR_strcpy(list->desc[index], inputBuffer, 0, 1024);
+        list->descSize[index] = GC_STR_strcpy(list->desc[index], inputBuffer, 0, FIELD_DESCRIPTION_MAX);
     }
     emptyBuffer(inputBuffer);
 
@@ -143,7 +147,7 @@ void todo_edit(TodoList *list, unsigned int index)
     printf(TERMINAL_COLOR_DIM "\nCurrent priority: " TERMINAL_COLOR_RESET "%s(%s) %hhu\n" TERMINAL_COLOR_RESET, TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], priority);
     printf(TERMINAL_COLOR_DIM "Edit priority [%s, %s, %s, %s | 1 - 4] \n" TERMINAL_COLOR_DIM "(press Enter to keep unchanged): " TERMINAL_COLOR_RESET, TODO_COLORED_QUADRANTS[0], TODO_COLORED_QUADRANTS[1], TODO_COLORED_QUADRANTS[2], TODO_COLORED_QUADRANTS[3]);
 
-    todo_getinput(inputBuffer, 1024);
+    todo_getinput(inputBuffer, INPUT_MAX_BUFFERS);
     if (!isempty(inputBuffer))
     {
         todo_writeBit(list->priority, todo_priority_input(inputBuffer, priority), index, TODO_PRIORITY_BITS);
@@ -152,13 +156,13 @@ void todo_edit(TodoList *list, unsigned int index)
 
     if (list->deadline[index])
     {
-        todo_time_str(ftimeBuffer, 20, list->deadline[index]);
+        todo_time_str(ftimeBuffer, 20, list->deadline[index] * SECONDS_IN_DAY);
     }
 
     printf(TERMINAL_COLOR_DIM "\nCurrent deadline (DD/MM/YYYY): " TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_YELLOW "%s\n" TERMINAL_COLOR_RESET, (list->deadline[index]) ? ftimeBuffer : "N/A");
     printf(TERMINAL_COLOR_DIM "Edit deadline {DD/MM/YYYY} (press Enter to keep unchanged): " TERMINAL_COLOR_RESET);
 
-    todo_getinput(inputBuffer, 1024);
+    todo_getinput(inputBuffer, INPUT_MAX_BUFFERS);
     if (!isempty(inputBuffer))
     {
         if (isdigit(inputBuffer[0]))
@@ -188,7 +192,6 @@ void todo_view(TodoList *list, unsigned int index)
     }
     todo_time_str(created, 20, list->created[index]);
     uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
-
     printf(
         "\x1b[38;5;245m" "ID: %u\n" TERMINAL_COLOR_RESET
         "\x1b[38;5;245m" "Title: " TERMINAL_COLOR_RESET "\x1b[38;5;229m" "%s\n" TERMINAL_COLOR_RESET
@@ -251,12 +254,14 @@ void todo_clear()
 
 void todo_done(TodoList *list, unsigned int index)
 {
-    list->done[index] = 1;
+    todo_writeBit(list->done, 1, index, TODO_DONE_BITS);
+    printf("Item %u marked done.\n", index + 1);
 }
 
 void todo_undo(TodoList *list, unsigned int index)
 {
-    list->done[index] = 0;
+    todo_writeBit(list->done, 0, index, TODO_DONE_BITS);
+    printf("Item %u marked undone.\n", index + 1);
 }
 
 

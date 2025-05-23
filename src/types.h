@@ -3,12 +3,20 @@
 
 #include <stdint.h>
 
+// time constants
 #define SECONDS_IN_DAY (86400)
 #define SECONDS_IN_HOUR (3600)
 #define SECONDS_IN_MIN (60)
 
+// streams limits
+#define INPUT_MAX_BUFFERS 1024
+#define FIELD_TITLE_MAX 255
+#define FIELD_DESCRIPTION_MAX 255
+
+// data
 #define TODO_PRIORITY_BITS 2
 #define TODO_DONE_BITS 1
+
 
 typedef enum TodoListByteFields
 {
@@ -61,14 +69,14 @@ typedef struct DynamicTodoList
     uint32_t *created; // STORED IN MINUTES
     uint32_t *deadline; // STORED IN DAYS
     
-    uint8_t *titleSize;
+    uint8_t *titleSize; // max 255
     char **title; //editable
     
-    uint8_t *descSize;
+    uint8_t *descSize; // max 255
     char **desc; // editable
 
-    uint8_t *priority; // 2 bits
-    uint8_t *done; // 1 bit
+    uint8_t *priority; // stored int 2 bits
+    uint8_t *done; // stored in 1 bit
     
     
     /* Runtime Data */
@@ -78,7 +86,7 @@ typedef struct DynamicTodoList
     TRoot *sortedList;
     todotreeCmpFun sortingFunc;
     long long timeToday;
-    uint8_t isAccending; 
+    int isAccending; 
     unsigned int energy; 
 } TodoList;
 
@@ -103,12 +111,14 @@ typedef enum {
 typedef enum TodoCommandsEnum {
     COMMAND_ADD,
     COMMAND_CLEAR,
+    COMMAND_DONE,
     COMMAND_EDIT,
     COMMAND_GET,
     COMMAND_HELP,
     COMMAND_LIST,
     COMMAND_RANDOM,
     COMMAND_REMOVE,
+    COMMAND_UNDO,
     COMMAND_VERSION,
     COMMAND_VIEW,
 } TodoCommandsEnum;

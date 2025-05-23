@@ -57,6 +57,7 @@ uint8_t todo_getBit(uint8_t *arr, size_t index, TodoListByteFields fieldEnum)
 void todo_writeBit(uint8_t *arr, uint8_t value, size_t index, TodoListByteFields fieldEnum)
 {
     uint8_t *byte = &getByte_arr(arr, index, fieldEnum);
+    GC_LOG("index: %llu byteIndex: %llu bitIndex: %llu\n", index, byteIndex(index, fieldEnum), bitIndex(index, fieldEnum));
     writeBit_ptr(byte, value, bitIndex(index, fieldEnum), fieldEnum);
 }
 
@@ -217,9 +218,9 @@ int todo_stream_push(TodoList *list, TodoT *todo)
 
     list->created[index]    = (todo->created + (SECONDS_IN_MIN - 1)) / SECONDS_IN_MIN;
     list->deadline[index]   = (todo->deadline + (SECONDS_IN_DAY - 1)) / SECONDS_IN_DAY;
-    list->titleSize[index]  = UCLAMP(todo->titleSize, 255); 
+    list->titleSize[index]  = todo->titleSize; 
     list->title[index]      = todo->title;
-    list->descSize[index]   = UCLAMP(todo->descSize, 255);
+    list->descSize[index]   = todo->descSize;
     list->desc[index]       = todo->desc;
 
     todo_writeBit(list->priority, todo->priority, index, TODO_PRIORITY_BITS);

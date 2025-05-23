@@ -13,7 +13,9 @@ void todo_cmd_undo(TodoList *list, int argc, char *argv[]);
 
 void todo_sorting_arg(TodoList *list, int argc, char *argv[]);
 unsigned int todo_get_args(int argc, char *argv[], unsigned int index);
-unsigned int todo_arg_id(int argc, char *argv[], unsigned int index);
+unsigned int todo_energy_option(int argc, char *argv[]);
+
+size_t todo_arg_id(int argc, char *argv[], int argv_index, size_t max_val);
 uint8_t todo_priority_input(char *str, uint8_t defaultpriority);
 
 #endif // TODO_ARGS_INTERFACE_H

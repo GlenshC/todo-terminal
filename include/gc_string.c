@@ -37,6 +37,16 @@ GC_String *GC_STR_ReadFile(const char* path)
     return buffer;
 }
 
+size_t gc_str_strlen(char *str)
+{
+    size_t i = 0;
+    while (*(str++))
+    {
+        i++;
+    }
+    return i;
+}
+
 size_t GC_STR_strcpy_internal(char *dest, const char *src, unsigned int n, unsigned int max, const char* file, int line) 
 {
     size_t count = 0;

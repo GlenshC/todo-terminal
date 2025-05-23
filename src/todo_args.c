@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "gc_logs.h"
 #include "gc_tokens.h"
 #include "gc_string.h"
 #include "todo_help.h"
@@ -60,6 +61,7 @@ void todo_cmd_add(TodoList *list, int argc, char *argv[])
                 {
                     description = todo_cmd_add_arg_desciription(i++, argc, argv);
                 }
+
             }
             else
             {
@@ -90,62 +92,73 @@ void todo_sorting_arg(TodoList *list, int argc, char *argv[])
         if (argv[i][0] != '-')
         {
             continue;
-        }
+        } //--sort
 
         if (argv[i][1] == '-')
         {
-            if (todo_cmdi("--priority", i) == 0)
+            
+            if (todo_cmdi("--sort", i) == 0)
             {
-                list->sortingFunc = todo_tree_priorityCompare;
+                if (gc_str_partialMatch("priority", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_priorityCompare;
+                }
+                else if (gc_str_partialMatch("best", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_priorityScoreCompare;
+                    list->energy = todo_energy_option(argc, argv);
+                }
+                else if (gc_str_partialMatch("deadline", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_deadlineCompare;
+                }
+                else if (gc_str_partialMatch("created", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_createdCompare;
+                }
+                else if (gc_str_partialMatch("title", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_titleCompare;
+                }                
             }
-            else if (todo_cmdi("--best", i) == 0)
+            else if(todo_cmdi("--reverse", i) == 0)
             {
-                list->sortingFunc = todo_tree_priorityScoreCompare;
-                list->energy = todo_get_args(argc, argv, i+1);
-            }
-            else if (todo_cmdi("--deadline", i) == 0)
-            {
-                list->sortingFunc = todo_tree_deadlineCompare;
-            }
-            else if (todo_cmdi("--created", i) == 0)
-            {
-                list->sortingFunc = todo_tree_createdCompare;
-            }
-            else if (todo_cmdi("--title", i) == 0)
-            {
-                list->sortingFunc = todo_tree_titleCompare;
+                list->isAccending = -1;
             }
         }
         else
         {
-            if (todo_cmdi("-p", i) == 0)
+            if (todo_cmdi("-s", i) == 0)
             {
-                list->sortingFunc = todo_tree_priorityCompare;
-            }
-            else if (todo_cmdi("-b", i) == 0)
-            {
-                list->sortingFunc = todo_tree_priorityScoreCompare;
-                list->energy = todo_get_args(argc, argv, i+1);
-            }
-            else if (todo_cmdi("-D", i) == 0)
-            {
-                list->sortingFunc = todo_tree_deadlineCompare;
-            }
-            else if (todo_cmdi("-c", i) == 0)
-            {
-                list->sortingFunc = todo_tree_createdCompare;
-            }
-            else if (todo_cmdi("-t", i) == 0)
-            {
-                list->sortingFunc = todo_tree_titleCompare;
-            }
-        }
+                if (gc_str_partialMatch("p", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_priorityCompare;
+                }
+                else if (gc_str_partialMatch("b", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_priorityScoreCompare;
+                    list->energy = todo_energy_option(argc, argv);
+                }
+                else if (gc_str_partialMatch("d", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_deadlineCompare;
+                }
+                else if (gc_str_partialMatch("c", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_createdCompare;
+                }
+                else if (gc_str_partialMatch("t", targ_get(i+1, NULL)) == 0)
+                {
+                    list->sortingFunc = todo_tree_titleCompare;
+                }                
 
-        if (list->sortingFunc != todo_tree_defaultCompare)
-        {
-            break;
+            }
+            else if(todo_cmdi("-r", i) == 0)
+            {
+                list->isAccending = -1;
+            }
+            
         }
-        
     }
 
 }
@@ -160,10 +173,15 @@ void todo_cmd_edit(TodoList *list, int argc, char *argv[])
     }
 
     size_t item_id = 0;
-    item_id = todo_arg_id(argc, argv, 2);
-    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "edit: " TERMINAL_COLOR_RESET);
-
-    // printf("item id: %llu\n", item_id);
+    item_id = todo_arg_id(argc, argv, 2, list->size);
+    
+    if (item_id == 0)
+    {
+        todo_sorting_arg(list, argc, argv);
+        todo_stream_sort(list);
+        item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "edit: " TERMINAL_COLOR_RESET);
+    }
+    
     todo_edit(list, item_id-1);
     printf("\n");
 }
@@ -177,9 +195,15 @@ void todo_cmd_view(TodoList *list, int argc, char *argv[])
     }
 
     size_t item_id = 0;
-    item_id = todo_arg_id(argc, argv, 2);
-    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_BLUE "view: " TERMINAL_COLOR_RESET);
+    item_id = todo_arg_id(argc, argv, 2, list->size);
+    // GC_LOG("item_id: %zu\n", item_id);
 
+    if (item_id == 0)
+    {
+        todo_sorting_arg(list, argc, argv);
+        todo_stream_sort(list);
+        item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_BLUE "view: " TERMINAL_COLOR_RESET);
+    }
     todo_view(list, item_id-1);
     printf("\n");
 }
@@ -193,8 +217,14 @@ void todo_cmd_remove(TodoList *list, int argc, char *argv[])
     }
     
     size_t item_id = 0;
-    item_id = todo_arg_id(argc, argv, 2);
-    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_RED "remove: " TERMINAL_COLOR_RESET);
+    item_id = todo_arg_id(argc, argv, 2, list->size);
+    // 255 > 254 
+    if (item_id == 0)
+    {
+        todo_sorting_arg(list, argc, argv);
+        todo_stream_sort(list);
+        item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_RED "remove: " TERMINAL_COLOR_RESET);
+    }
 
     todo_stream_remove(list, item_id-1);
     printf("\n");
@@ -245,8 +275,14 @@ void todo_cmd_done(TodoList *list, int argc, char *argv[])
     }
 
     size_t item_id = 0;
-    item_id = todo_arg_id(argc, argv, 2);
-    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "mark done: " TERMINAL_COLOR_RESET);
+    item_id = todo_arg_id(argc, argv, 2, list->size);
+
+    if (item_id == 0)
+    {
+        todo_sorting_arg(list, argc, argv);
+        todo_stream_sort(list);
+        item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "mark done: " TERMINAL_COLOR_RESET);
+    }
     
     todo_done(list, item_id-1);
 }
@@ -259,8 +295,14 @@ void todo_cmd_undo(TodoList *list, int argc, char *argv[])
     }
 
     size_t item_id = 0;
-    item_id = todo_arg_id(argc, argv, 2);
-    item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "undo: " TERMINAL_COLOR_RESET);
+    item_id = todo_arg_id(argc, argv, 2, list->size);
+
+    if (item_id == 0)
+    {
+        todo_sorting_arg(list, argc, argv);
+        todo_stream_sort(list);
+        item_id = todo_inputItemID(list, item_id, "\nEnter item ID to " TERMINAL_BOLD_YELLOW "undo: " TERMINAL_COLOR_RESET);
+    }
     
     todo_undo(list, item_id-1);
 
@@ -271,13 +313,21 @@ void todo_cmd_undo(TodoList *list, int argc, char *argv[])
     ARGSSSS 
    ===================================================================*/
 
-unsigned int todo_arg_id(int argc, char *argv[], unsigned int index)
+size_t todo_arg_id(int argc, char *argv[], int argv_index, size_t max_val)
 {
-    if (index >= (unsigned int)argc)
+    if (argv_index >= argc)
     {
         return 0;
     }
-    return strtoul(argv[index], NULL, 0);
+
+    size_t val = strtoull(argv[argv_index], NULL, 0);
+    
+    if (val > max_val)
+    {
+        return 0;
+    }
+    
+    return val;
 }
 
 unsigned int todo_get_args(int argc, char *argv[], unsigned int index)
@@ -307,6 +357,76 @@ unsigned int todo_get_args(int argc, char *argv[], unsigned int index)
                 return 1;
             }
         }
+    }
+    return 0;
+}
+
+unsigned int todo_energy_option(int argc, char *argv[])
+{
+    for (int i = 0; i < argc; i++)
+    {
+        if (argv[i][0] != '-')
+        {
+            continue;
+        }
+        if (argv[i][1] == '-')
+        {
+            if (todo_cmdi("--energy", i) == 0)
+            {
+                if (isdigit(argv[i+1][0]))
+                {
+                    return strtoul(argv[i+1], NULL, 0);
+                }
+                else
+                {
+                    if (gc_str_partialMatch("high", argv[i+1]) == 0)
+                    {
+                        return 3;
+                    }
+                    else if (gc_str_partialMatch("medium", argv[i+1]) == 0)
+                    {
+                        return 2;
+                    }
+                    else if (gc_str_partialMatch("low", argv[i+1]) == 0)
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (todo_cmdi("-E", i) == 0)
+            {
+                if (isdigit(argv[i+1][0]))
+                {
+                    return strtoul(argv[i+1], NULL, 0);
+                }
+                else
+                {        
+                    if (gc_str_partialMatch("high", argv[i+1]) == 0)
+                    {
+                        return 3;
+                    }
+                    else if (gc_str_partialMatch("medium", argv[i+1]) == 0)
+                    {
+                        return 2;
+                    }
+                    else if (gc_str_partialMatch("low", argv[i+1]) == 0)
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }  
     }
     return 0;
 }
@@ -383,6 +503,7 @@ static uint8_t todo_cmd_add_arg_priority(int index, int argc, char *argv[])
 static char *todo_cmd_add_arg_desciription(int index, int argc, char *argv[])
 {
     char *nextarg = targ_get(index+1, NULL);
+
     if (nextarg == NULL)
     {
         todo_error(TODO_ERROR_INVALID_CMD_USAGE);
