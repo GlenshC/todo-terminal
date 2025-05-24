@@ -1,30 +1,29 @@
-future additions:
-    usual stuff we do - routine?
-
-Redesign:
-    priority system - DONE
-    ugent and important - DONE
-
 ADD:
+TODO LIST GROW, because its like a static size
+change to dynamically resizing stream
 add [todo done | todo undo]?
 help with invalid command usage 
 DOCUMENT -r --reverse as sorting in descending order
 DOCUMENT --sort -s and -E in list/sorting
+Add filtering  --filter "key=value,ket2=value2"
 
 list filters (like showing only the specific priorities or filtering out whats done)
 add age decay for no deadline (increases the points 1pt/week) (might need to balance it out)
 waste items always ties so maybe introduce -+5pts randomness
 
 REDESIGN:
-soring arg from --priority to --sort priority or -s priority
+CHANGE FROM OVERLY ENGINEERED BSTed index sorting TO QSORTed index sorting
 
 fix:
-edit string sizes not changed after edit
 
+---------------------------------------------
 fixed:
+strlen desc and title overflow
+edit string sizes not changed after edit
 free_todolist
 
 ADDED
+soring arg from --priority to --sort priority or -s priority
 FASTER edit, remove, view when id arg is provided (skips sorting)
 add list args descending and ascending (-r | --reverse)
 optimize save file (see devlog)

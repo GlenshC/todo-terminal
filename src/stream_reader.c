@@ -44,6 +44,7 @@ void stream_reader(TodoList *todolist, FILE *file)
     
     uint8_t *priority   = todolist->priority;
     uint8_t *done   = todolist->done;
+    GC_SORT_TYPE *sortedlist   = todolist->sortedList;
     
     // get title sizes
     fread_align8(created, sizeof(*todolist->created), size, file);    
@@ -60,6 +61,7 @@ void stream_reader(TodoList *todolist, FILE *file)
         
         bytesRead += fread(title[i], sizeof(char), n, file);
         title[i][n] = 0;
+        sortedlist[i] = i;
     }
     fread_pad8(bytesRead, file);
     
@@ -157,12 +159,16 @@ int todo_stream_init(TodoList *list, size_t capacity) // capacity update done
     {
         return 1;
     }
+    list->sortedList = malloc(sizeof(*list->sortedList)*capacity);
+    if (list->sortedList == NULL)
+    {
+        return 1;
+    }
     
-    list->sortedList = NULL;
     list->energy = 0;
     list->isAccending = 1;
     list->timeToday = time(NULL);
-    list->sortingFunc = todo_tree_defaultCompare;
+    list->sortingFunc = TODO_SORT_DEFAULT;
 
     return 0;
 }

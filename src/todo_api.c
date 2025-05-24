@@ -3,6 +3,7 @@
 #include "todo_api.h"
 #include "todo_args.h"
 #include "todo_cmd.h"
+#include "sorting.h"
 #include "stream.h"
 
 static void todo_sort(TodoList *list, int argc, char *argv[]);
@@ -33,12 +34,14 @@ void cmd_list(TodoList *list, int argc, char *argv[])
 
 void cmd_get(TodoList *list, int argc, char *argv[])
 {
+    // FIXME
     todo_prioritySort(list, argc, argv);
     todo_cmd_get(list);
 }
 
 void cmd_random(TodoList *list, int argc, char *argv[])
 {
+    // FIXME
     todo_prioritySort(list, argc, argv);
     todo_cmd_random(list);
 }
@@ -84,7 +87,7 @@ void todo_freelist(TodoList *list)
 static void todo_sort(TodoList *list, int argc, char *argv[])
 {
     todo_sorting_arg(list, argc, argv);
-    todo_stream_sort(list);
+    todo_sort_stream(list);
 }
 
 static void todo_prioritySort(TodoList *list, int argc, char *argv[])

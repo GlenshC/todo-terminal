@@ -15,7 +15,8 @@
 #include "todo_get_alg.h"
 #include "stream_reader.h"
 #include "stream_writer.h"
-#include "bitwise.h"
+// #include "bitwise.h"
+#include "sorting.h"
 
 #include "todoio.h"
 
@@ -48,20 +49,6 @@ int todo_stream_init(TodoList *list, size_t capacity);
     #define TEMP_FILE_NAME ".temp.temptodo"
 #endif
 
-uint8_t todo_getBit(uint8_t *arr, size_t index, TodoListByteFields fieldEnum)
-{
-    uint8_t byte = getByte_arr(arr, index, fieldEnum);
-    return readBits(byte, bitIndex(index, fieldEnum), fieldEnum);
-}
-
-void todo_writeBit(uint8_t *arr, uint8_t value, size_t index, TodoListByteFields fieldEnum)
-{
-    uint8_t *byte = &getByte_arr(arr, index, fieldEnum);
-    GC_LOG("index: %llu byteIndex: %llu bitIndex: %llu\n", index, byteIndex(index, fieldEnum), bitIndex(index, fieldEnum));
-    writeBit_ptr(byte, value, bitIndex(index, fieldEnum), fieldEnum);
-}
-
-
 /* ======================================
     Read
    ====================================== */
@@ -82,8 +69,8 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     readwrite = fopen(get_todo_file_path(), "rb");
     if (readwrite == NULL)
     {
-        todo_stream_init(todolist, 0);
-        GC_LOG("aareading failed.\n");
+        // todo_stream_init(todolist, 0);
+        GC_LOG("reading failed.\n");
         return 1;
     }
     
@@ -185,7 +172,7 @@ void todo_stream_free_todolist(TodoList *todolist) // capacity update
     free(todolist->created);
     free(todolist->deadline);
     
-    todo_tree_free(&todolist->sortedList);
+    free(todolist->sortedList);
     
     todolist->size = 0;
     todolist->capacity = 0;
@@ -243,17 +230,18 @@ int todo_stream_remove(TodoList *list, size_t index)
         return -1;
     }
     
+    /* FIXME sorting remove */
     //void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare);
     (list->size)--;
     size_t end = list->size;
     uint8_t *byteptr;
     uint8_t bit_end;
 
-    todo_tree_remove(list, list->sortedList, index, todo_tree_priorityCompare);
+    // todo_tree_remove(list, list->sortedList, index, todo_tree_priorityCompare);
     
     if (index != end)
     {
-        todo_tree_remove(list, list->sortedList, end, todo_tree_priorityCompare);
+        // todo_tree_remove(list, list->sortedList, end, todo_tree_priorityCompare);
         
         list->titleSize[index]  = list->titleSize[end];
         list->title[index]      = list->title[end];
@@ -271,82 +259,58 @@ int todo_stream_remove(TodoList *list, size_t index)
         list->created[index]    = list->created[end];
         list->deadline[index]   = list->deadline[end];
         
-        todo_tree_push(list, list->sortedList, index, todo_tree_priorityCompare);
+        // todo_tree_push(list, list->sortedList, index, todo_tree_priorityCompare);
     }
     
-    
-    
-    // @bst remove the index and add index again
     
     return 0;
 }
 
 
-
-
 void todo_stream_sort(TodoList *list)
 {
-    todotreeCmpFun compare = list->sortingFunc;
-    if (compare == NULL)
+    SortingTypeEnum compare = list->sortingFunc;
+    if (compare == TODO_SORT_DEFAULT)
     {
         return;
     }
-    if (list->sortedList != NULL)
-    {
-        todo_tree_free(&list->sortedList);
-    }
 
-    TRoot *root = todo_tree_init();
+    int *root = todo_sort_stream_init(list->capacity);
     list->sortedList = root;
-    size_t size = list->size;
 
-    if (compare == todo_tree_priorityScoreCompare)
-    {
-        pScore *scoreTable = todo_get_todouserenergy(&list->energy);
-        time_t timeToday = todo_get_timeToday();
-        for (size_t i =0; i < size; i++)
-        {
-            list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
-            todo_tree_push(list, root, i, compare);
-        }
-    }
-    else
-    {
-        for (size_t i =0; i < size; i++)
-        {
-            todo_tree_push(list, root, i, compare);
-        }
-    }    
+    todo_sort_stream(list);
+    
 }
 
 void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy)
 {
-    if (list->size < 1)
+
+    if (list->size < 1 || energy == 0)
     {
         return;
     }
-    list->sortingFunc = todo_tree_priorityScoreCompare;
-    todotreeCmpFun compare = list->sortingFunc;
+    // list->sortingFunc = todo_tree_priorityScoreCompare;
+    // todotreeCmpFun compare = list->sortingFunc;
 
-    if (list->sortedList != NULL)
-    {
-        todo_tree_free(&list->sortedList);
-    }
+    // if (list->sortedList != NULL)
+    // {
+    //     todo_tree_free(&list->sortedList);
+    // }
 
-    TRoot *root = todo_tree_init();
-    list->sortedList = root;
-    size_t size = list->size;
+    // TRoot *root = todo_tree_init();
+    // list->sortedList = root;
+    // size_t size = list->size;
 
-    list->energy = energy;
+    // list->energy = energy;
 
-    pScore *scoreTable = todo_get_todouserenergy(&list->energy);
-    time_t timeToday = todo_get_timeToday();
-    for (size_t i =0; i < size; i++)
-    {
-        list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
+    // pScore *scoreTable = todo_get_todouserenergy(&list->energy);
+    // time_t timeToday = todo_get_timeToday();
+    // for (size_t i =0; i < size; i++)
+    // {
+    //     list->priorityScore[i] = todo_get_priorityScore(list, i, scoreTable, timeToday);
         
-        todo_tree_push(list, root, i, compare);
-    }
+    //     todo_tree_push(list, root, i, compare);
+    // }
 
 }
 

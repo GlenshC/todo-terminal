@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+#define GC_SORT_TYPE int
+
+typedef enum SortingTypeEnum {
+    TODO_SORT_DEFAULT,
+    TODO_SORT_PRIORITY,
+    TODO_SORT_DEADLINE,
+    TODO_SORT_CREATED,
+    TODO_SORT_TITLE,
+    TODO_SORT_DONE,
+    TODO_SORT_BEST
+} SortingTypeEnum;
+
 // time constants
 #define SECONDS_IN_DAY (86400)
 #define SECONDS_IN_HOUR (3600)
@@ -25,7 +37,7 @@ typedef enum TodoListByteFields
 } TodoListByteFields;
 
 
-typedef long long pScore;
+typedef uint32_t pScore;
 
 typedef struct TNode{
     unsigned int value;
@@ -60,6 +72,15 @@ struct DynamicTodoList;
 typedef int (*todotreeCmpFun)(struct DynamicTodoList *list, unsigned int a, unsigned int b);
 typedef void (*todotreeDispFun)(struct DynamicTodoList *list, unsigned int value);
 
+
+/* 
+    Sorting allowed
+
+    priority
+    title
+    deadline / created / priorityScore
+    
+*/
 typedef struct DynamicTodoList
 {
     
@@ -83,8 +104,8 @@ typedef struct DynamicTodoList
     size_t capacity;
     pScore *priorityScore;
 
-    TRoot *sortedList;
-    todotreeCmpFun sortingFunc;
+    GC_SORT_TYPE *sortedList;
+    SortingTypeEnum sortingFunc;
     long long timeToday;
     int isAccending; 
     unsigned int energy; 
@@ -97,15 +118,6 @@ typedef struct DynamicTodoList
     2 = urgent not important (Distraction)
     3 = not urgent not important (Waste)
     */
-
-
-typedef enum {
-    TODO_SORT_DEFAULT,
-    TODO_SORT_PRIORITY,
-    TODO_SORT_DEADLINE,
-    TODO_SORT_CREATED,
-    TODO_SORT_TITLE
-} todo_TreeSortType;
 
 /* COMMANDS */
 typedef enum TodoCommandsEnum {

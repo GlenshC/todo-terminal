@@ -48,6 +48,11 @@ C_SRC   := 	src/main.c \
 			src/bitwise.c \
 			src/stream_reader.c \
 			src/stream_writer.c \
+			src/sorting.c \
+			src/todo_sort/todo_sort.c \
+			src/todo_sort/sort_bytes.c \
+			src/todo_sort/sort_title.c \
+			src/todo_sort/sort_uint32.c \
 			include/gc_string.c \
 			include/gc_tokens.c
 CXX_SRC := 	

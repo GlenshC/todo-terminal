@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include "types.h"
+#include "bitwise.h"
 
 #define TODO_STREAM_MAX_TODOS 1024
 
@@ -16,8 +17,5 @@ int todo_stream_push(TodoList *list, TodoT *todo);
 int todo_stream_remove(TodoList *list, size_t index);
 void todo_stream_sort(TodoList *list);
 void todo_stream_priorityScoreSort(TodoList *list, unsigned int energy);
-
-uint8_t todo_getBit(uint8_t *arr, size_t index, TodoListByteFields fieldEnum);
-void todo_writeBit(uint8_t *arr, uint8_t value, size_t index, TodoListByteFields fieldEnum);
 
 #endif // GC_TODO_STREAM_H included

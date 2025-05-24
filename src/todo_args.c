@@ -86,7 +86,7 @@ void todo_cmd_add(TodoList *list, int argc, char *argv[])
 
 void todo_sorting_arg(TodoList *list, int argc, char *argv[])
 {
-    list->sortingFunc = todo_tree_defaultCompare;
+    list->sortingFunc = TODO_SORT_DEFAULT;
     for (int i = 2; i < argc; i++)
     {
         if (argv[i][0] != '-')
@@ -101,24 +101,24 @@ void todo_sorting_arg(TodoList *list, int argc, char *argv[])
             {
                 if (gc_str_partialMatch("priority", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_priorityCompare;
+                    list->sortingFunc = TODO_SORT_PRIORITY;
                 }
                 else if (gc_str_partialMatch("best", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_priorityScoreCompare;
+                    list->sortingFunc = TODO_SORT_BEST;
                     list->energy = todo_energy_option(argc, argv);
                 }
                 else if (gc_str_partialMatch("deadline", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_deadlineCompare;
+                    list->sortingFunc = TODO_SORT_DEADLINE;
                 }
                 else if (gc_str_partialMatch("created", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_createdCompare;
+                    list->sortingFunc = TODO_SORT_CREATED;
                 }
                 else if (gc_str_partialMatch("title", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_titleCompare;
+                    list->sortingFunc = TODO_SORT_TITLE;
                 }                
             }
             else if(todo_cmdi("--reverse", i) == 0)
@@ -132,24 +132,24 @@ void todo_sorting_arg(TodoList *list, int argc, char *argv[])
             {
                 if (gc_str_partialMatch("p", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_priorityCompare;
+                    list->sortingFunc = TODO_SORT_PRIORITY;
                 }
                 else if (gc_str_partialMatch("b", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_priorityScoreCompare;
+                    list->sortingFunc = TODO_SORT_BEST;
                     list->energy = todo_energy_option(argc, argv);
                 }
                 else if (gc_str_partialMatch("d", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_deadlineCompare;
+                    list->sortingFunc = TODO_SORT_DEADLINE;
                 }
                 else if (gc_str_partialMatch("c", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_createdCompare;
+                    list->sortingFunc = TODO_SORT_CREATED;
                 }
                 else if (gc_str_partialMatch("t", targ_get(i+1, NULL)) == 0)
                 {
-                    list->sortingFunc = todo_tree_titleCompare;
+                    list->sortingFunc = TODO_SORT_TITLE;
                 }                
 
             }

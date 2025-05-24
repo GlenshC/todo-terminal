@@ -23,7 +23,6 @@
 
 static time_t todo_date_createtime(TodoDate *tododate, time_t todayRaw);
 static void todo_stream_display_sorted(TodoList *list, unsigned int index);
-static void todo_stream_display_debug_sorted(TodoList *list, unsigned int index);
 static void todo_time_str(char *buffer, size_t maxCount, time_t time);
 static void todo_display_table_list(TodoList *list);
 static unsigned int todo_get_deadlineColor(time_t deadline, time_t today);
@@ -236,8 +235,9 @@ void todo_cmd_get(TodoList *list)
         todo_error(TODO_ERROR_EMPTY);
         return;
     }
-    unsigned int index = todo_tree_at(list, list->sortedList, 0);
-    todo_stream_display_sorted(list, index);
+    // FIXME
+    // unsigned int index = todo_tree_at(list, list->sortedList, 0);
+    // todo_stream_display_sorted(list, index);
 }
 
 void todo_clear()
@@ -287,24 +287,6 @@ static void todo_stream_display_sorted(TodoList *list, unsigned int index)
         TODO_QUADRANTS_COLOR[priority], list->title[index], list->desc[index], 
         TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], 
         TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], buffer);
-}
-
-static void todo_stream_display_debug_sorted(TodoList *list, unsigned int index)
-{
-    char buffer[20] = {};
-    if (list->deadline[index])
-    {
-        todo_time_str(buffer, 20, list->deadline[index] * SECONDS_IN_DAY);
-    }
-    uint8_t priority = todo_getBit(list->priority, index, TODO_PRIORITY_BITS);
-    printf(
-        "%4u  %s%-20.18s" TERMINAL_COLOR_RESET TERMINAL_COLOR_LIGHT_GRAY " %-40.38s " TERMINAL_COLOR_RESET "%s%-15.13s" TERMINAL_COLOR_RESET " \x1b[38;5;%dm%-16.14s" TERMINAL_COLOR_RESET " %lld\n", 
-        index+1, 
-        TODO_QUADRANTS_COLOR[priority], list->title[index], list->desc[index], 
-        TODO_QUADRANTS_COLOR[priority], TODO_QUADRANTS[priority], 
-        TODO_DEADLINE_COLOR[todo_get_deadlineColor(list->deadline[index], list->timeToday)], buffer,
-        list->priorityScore[index]
-    );
 }
 
 static void todo_time_str(char *buffer, size_t maxCount, time_t time)
@@ -378,18 +360,17 @@ static unsigned int todo_get_deadlineColor(time_t deadline, time_t today)
     return 7;
 } // 1970
 
+static void todo_display_sortedlist(TodoList *list)
+{
+    for (size_t i = 0; i < list->size; i++)
+    {
+        todo_stream_display_sorted(list, list->sortedList[i]);
+    }
+}
 
 static void todo_display_table_list(TodoList *list)
 {
-    if (list->energy)
-    {
-        todo_display_table_debug_header();
-        todo_tree_display(list, list->sortedList, todo_stream_display_debug_sorted);
-    }
-    else
-    {
-        todo_display_table_header();
-        todo_tree_display(list, list->sortedList, todo_stream_display_sorted);
-    }
+    todo_display_table_debug_header();
+    todo_display_sortedlist(list);
 }
 

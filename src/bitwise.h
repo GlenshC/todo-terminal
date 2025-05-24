@@ -28,6 +28,9 @@
 #define writeBit_ptr(ptr, value, index, nbits) (*(ptr) = (writeBits(*(ptr), (value), bitIndex((index), (nbits)), (nbits))))
 
 
+uint8_t todo_getBit(uint8_t *arr, size_t index, TodoListByteFields fieldEnum);
+void todo_writeBit(uint8_t *arr, uint8_t value, size_t index, TodoListByteFields fieldEnum);
+
 uint8_t readBits(uint8_t byte, size_t bit_index, uint8_t nbits);
 uint8_t writeBits(uint8_t byte, uint8_t value, size_t bit_index, uint8_t nbits);
 
