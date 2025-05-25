@@ -111,3 +111,12 @@ char **desc; // editable
 long long *deadline; // editable
 long long *created;
 uint8_t *priority; 
+
+
+TODO PAGES =======================
+save files will become todo_n.todo, where n is the number of the page starting at 0
+we will load 3 pages: previous, current, next pages
+writing will occur in threads and when the page is not in view.
+user will not be allowed to view non current pages if during writing process
+
+when data from a page is modified, it will be marked as dirty and will be appended to write buffer.

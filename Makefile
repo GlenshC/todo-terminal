@@ -35,7 +35,6 @@ BUILD_DIR := build
 C_SRC   := 	src/main.c \
 			src/todo.c \
 			src/stream.c \
-			src/todo_tree.c \
 			src/todo_cmp.c \
 			src/todo_cmd.c \
 			src/todo_api.c \
@@ -44,17 +43,20 @@ C_SRC   := 	src/main.c \
 			src/todo_error.c \
 			src/todoio.c \
 			src/todo_get_alg.c \
+			src/todo_hash.c \
 			src/todo_version.c \
 			src/bitwise.c \
 			src/stream_reader.c \
 			src/stream_writer.c \
-			src/sorting.c \
+			src/stream_sort.c \
 			src/todo_sort/todo_sort.c \
 			src/todo_sort/sort_bytes.c \
 			src/todo_sort/sort_title.c \
 			src/todo_sort/sort_uint32.c \
 			include/gc_string.c \
-			include/gc_tokens.c
+			include/gc_tokens.c \
+			include/gc_speed_test.c \
+			include/gc_bsearch.c
 CXX_SRC := 	
 
 # Object files for debug and release
@@ -65,7 +67,7 @@ CXX_OBJ_RELEASE := $(CXX_SRC:%.cpp=$(BUILD_DIR)/release/%.o)
 
 # Final binary names for debug and release
 TARGET_DEBUG := $(BUILD_DIR)/debug
-TARGET_RELEASE := $(BUILD_DIR)/release
+TARGET_RELEASE := $(BUILD_DIR)/todo
 
 # Debug flags
 DEBUG_FLAGS := -DGC_DEBUG

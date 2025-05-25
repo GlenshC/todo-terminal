@@ -9,44 +9,44 @@ void gc_insertionsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int siz
 void gc_qsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size);
 */
 
-static void gc_qsort_implementation(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, int depth_limit); 
-static int gc_qsort_partition(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high);
-static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high);
-static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, unsigned int index);
-static void gc_heapsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size);
-
+static void gc_qsort_implementation(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, int depth_limit, ascendingType isAscending); 
+static int gc_qsort_partition(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, ascendingType isAscending);
+static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, ascendingType isAscending);
+static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, unsigned int index, ascendingType isAscending);
+static void gc_heapsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, ascendingType isAscending);
+static int compareFunc_str(GC_STYPE a, GC_STYPE b, ascendingType isAscending);
 /* ================================ 
     QSORT 
    ================================*/
 
-void gc_qsort_str(char **values, GC_SORT_TYPE *indexArr, unsigned int size)
+void gc_qsort_str(char **values, GC_SORT_TYPE *indexArr, unsigned int size, ascendingType isAscending)
 {
-    gc_qsort_implementation(values, indexArr, 0, size - 1, 2 * (int)log2(size));
+    gc_qsort_implementation(values, indexArr, 0, size - 1, 2 * (int)log2(size), isAscending);
 }
 
-static void gc_qsort_implementation(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, int depth_limit) 
+static void gc_qsort_implementation(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, int depth_limit, ascendingType isAscending) 
 {
     if (depth_limit == 0)
     {
-        gc_heapsort(values, indexArr + low, high);
+        gc_heapsort(values, indexArr + low, high, isAscending);
     }
     if (low < high) {
-        int pi = gc_qsort_partition(values, indexArr, low, high);
+        int pi = gc_qsort_partition(values, indexArr, low, high, isAscending);
 
-        gc_qsort_implementation(values, indexArr, low, pi - 1, depth_limit - 1);
-        gc_qsort_implementation(values, indexArr, pi + 1, high, depth_limit - 1);
+        gc_qsort_implementation(values, indexArr, low, pi - 1, depth_limit - 1, isAscending);
+        gc_qsort_implementation(values, indexArr, pi + 1, high, depth_limit - 1, isAscending);
     }
 }
 /*
 
 */
-static int gc_qsort_partition(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high) 
+static int gc_qsort_partition(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, ascendingType isAscending) 
 {
-    GC_STYPE pivot = values[indexArr[gc_get_pivotIndex(values, indexArr, low, high)]];
+    GC_STYPE pivot = values[indexArr[gc_get_pivotIndex(values, indexArr, low, high, isAscending)]];
     
     int i = low - 1;
     for (int j = low; j <= high - 1; j++) {
-        if (strcmp(values[indexArr[j]], pivot) < 0) {
+        if (compareFunc_str(values[indexArr[j]], pivot, isAscending) < 0) {
             i++;
             swap(&indexArr[i], &indexArr[j]);
         }
@@ -56,7 +56,7 @@ static int gc_qsort_partition(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low,
     return i + 1;
 }
 
-static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high)
+static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, int high, ascendingType isAscending)
 {
     int mid = low + (high - low) / 2;
     GC_SORT_TYPE 
@@ -67,8 +67,8 @@ static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, 
     // a - c
     // b - c
     // a - b
-    int cmpAC = strcmp(values[a], values[c]);
-    int cmpBC = strcmp(values[b], values[c]);
+    int cmpAC = compareFunc_str(values[a], values[c], isAscending);
+    int cmpBC = compareFunc_str(values[b], values[c], isAscending);
     int cmpAB = cmpAC - cmpBC;
 
     if (cmpAC > 0)
@@ -93,33 +93,34 @@ static int gc_get_pivotIndex(GC_STYPE *values, GC_SORT_TYPE *indexArr, int low, 
     HEAPSORT 
    ================================*/
 
-static void gc_heapsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size)
+static void gc_heapsort(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, ascendingType isAscending)
 {
     for (unsigned int i = size/2; i-- > 0;)
     {
-        gc_sort_heapify(values, indexArr, size, i);
+        gc_sort_heapify(values, indexArr, size, i, isAscending);
     }
 
     for (unsigned int i = size; i-- > 0;)
     {
         swap(indexArr, indexArr+i);
 
-        gc_sort_heapify(values, indexArr, i, 0);
+        gc_sort_heapify(values, indexArr, i, 0, isAscending);
     }
 }
 
-static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, unsigned int index)
+static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned int size, unsigned int index, ascendingType isAscending)
 {
     unsigned int largest = index;
     unsigned int left = (2 * index) + 1;
     unsigned int right = (2 * index) + 2;
 
-    if (left < size && values[indexArr[left]] > values[indexArr[largest]])
+     
+    if (left < size && (compareFunc_str(values[indexArr[left]], values[indexArr[largest]], isAscending) > 0))
     {
         largest = left;
     }
 
-    if (right < size && values[indexArr[right]] > values[indexArr[largest]])
+    if (right < size && (compareFunc_str(values[indexArr[right]], values[indexArr[largest]], isAscending) > 0))
     {
         largest = right;
     }
@@ -128,7 +129,7 @@ static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned i
     {
         swap(indexArr+largest, indexArr+index);
 
-        gc_sort_heapify(values, indexArr, size, largest);
+        gc_sort_heapify(values, indexArr, size, largest, isAscending);
     }
 }
 
@@ -136,14 +137,13 @@ static void gc_sort_heapify(GC_STYPE *values, GC_SORT_TYPE *indexArr, unsigned i
 /* ================================ 
     INSERTION SORT 
    ================================*/
-void gc_insertionsort_str(char **values, GC_SORT_TYPE *indexArr, unsigned int size)
+void gc_insertionsort_str(char **values, GC_SORT_TYPE *indexArr, unsigned int size, ascendingType isAscending)
 {
     for (unsigned int i = 1; i < size; i++)
     {
         for (unsigned int j = i; j > 0; j--)
         {
-            // if (values[indexArr[j]] < values[indexArr[j-1]])
-            if (strcmp(values[indexArr[j]], values[indexArr[j-1]]) < 0)
+            if (compareFunc_str(values[indexArr[j]], values[indexArr[j-1]], isAscending) < 0)
             {
                 GC_SORT_TYPE temp = indexArr[j];
                 indexArr[j] = indexArr[j-1];
@@ -151,4 +151,9 @@ void gc_insertionsort_str(char **values, GC_SORT_TYPE *indexArr, unsigned int si
             }
         }
     }
+}
+
+int compareFunc_str(GC_STYPE a, GC_STYPE b, ascendingType isAscending)
+{
+    return strcmp(a, b) * isAscending;
 }

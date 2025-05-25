@@ -26,4 +26,4 @@ call todo add "Scroll Instagram" -d "Just 5 minutes... (yeah right)" -p 4
 
 echo.
 echo All sample todos added with correct priorities and a deadline offset of %OFFSET_DAYS% days!
-pause
+

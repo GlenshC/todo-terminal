@@ -29,7 +29,6 @@ typedef enum SortingTypeEnum {
 #define TODO_PRIORITY_BITS 2
 #define TODO_DONE_BITS 1
 
-
 typedef enum TodoListByteFields
 {
     TODO_FIELD_DONE = 1,
@@ -69,18 +68,13 @@ typedef struct TodoT
 
 struct DynamicTodoList;
 
+// depreciated
 typedef int (*todotreeCmpFun)(struct DynamicTodoList *list, unsigned int a, unsigned int b);
 typedef void (*todotreeDispFun)(struct DynamicTodoList *list, unsigned int value);
 
+typedef int ascendingType;
+// typedef time_t func_timetoday(void);
 
-/* 
-    Sorting allowed
-
-    priority
-    title
-    deadline / created / priorityScore
-    
-*/
 typedef struct DynamicTodoList
 {
     
@@ -105,10 +99,11 @@ typedef struct DynamicTodoList
     pScore *priorityScore;
 
     GC_SORT_TYPE *sortedList;
-    SortingTypeEnum sortingFunc;
+    // char **deadlineBuffer;
     long long timeToday;
-    int isAccending; 
+    SortingTypeEnum sortingFunc;
     unsigned int energy; 
+    ascendingType isAccending; 
 } TodoList;
 
 /*
@@ -134,5 +129,6 @@ typedef enum TodoCommandsEnum {
     COMMAND_VERSION,
     COMMAND_VIEW,
 } TodoCommandsEnum;
+
 
 #endif

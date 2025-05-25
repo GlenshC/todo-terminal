@@ -10,7 +10,7 @@ void todo_cmd_remove(TodoList *list, int argc, char *argv[]);
 void todo_cmd_done(TodoList *list, int argc, char *argv[]);
 void todo_cmd_undo(TodoList *list, int argc, char *argv[]);
 
-
+void todo_cmd_prioritySort_args(TodoList *list, int argc, char *argv[]);
 void todo_sorting_arg(TodoList *list, int argc, char *argv[]);
 unsigned int todo_get_args(int argc, char *argv[], unsigned int index);
 unsigned int todo_energy_option(int argc, char *argv[]);

@@ -5,6 +5,6 @@
 
 GC_SORT_TYPE *todo_sort_stream_init(size_t size);
 void todo_sort_stream(TodoList *list);
-// void todo_sort_stream_remove(TodoList *arr, unsigned int index, size_t size);
+void todo_sort_stream_remove(TodoList *list, GC_SORT_TYPE index, size_t size);
 
 #endif

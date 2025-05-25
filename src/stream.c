@@ -16,7 +16,7 @@
 #include "stream_reader.h"
 #include "stream_writer.h"
 // #include "bitwise.h"
-#include "sorting.h"
+#include "stream_sort.h"
 
 #include "todoio.h"
 
@@ -69,8 +69,8 @@ int todo_stream_read(TodoList *todolist) // capacity update done
     readwrite = fopen(get_todo_file_path(), "rb");
     if (readwrite == NULL)
     {
-        // todo_stream_init(todolist, 0);
         GC_LOG("reading failed.\n");
+        todo_stream_init(todolist, 0);
         return 1;
     }
     
@@ -231,9 +231,10 @@ int todo_stream_remove(TodoList *list, size_t index)
     }
     
     /* FIXME sorting remove */
-    //void todo_tree_remove(TodoList *list, TRoot *root, unsigned int value, todotreeCmpFun compare);
     (list->size)--;
     size_t end = list->size;
+    todo_sort_stream_remove(list, index, list->size);
+    
     uint8_t *byteptr;
     uint8_t bit_end;
 
@@ -241,7 +242,6 @@ int todo_stream_remove(TodoList *list, size_t index)
     
     if (index != end)
     {
-        // todo_tree_remove(list, list->sortedList, end, todo_tree_priorityCompare);
         
         list->titleSize[index]  = list->titleSize[end];
         list->title[index]      = list->title[end];
@@ -259,7 +259,6 @@ int todo_stream_remove(TodoList *list, size_t index)
         list->created[index]    = list->created[end];
         list->deadline[index]   = list->deadline[end];
         
-        // todo_tree_push(list, list->sortedList, index, todo_tree_priorityCompare);
     }
     
     

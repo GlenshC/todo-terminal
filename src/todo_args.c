@@ -431,6 +431,12 @@ unsigned int todo_energy_option(int argc, char *argv[])
     return 0;
 }
 
+void todo_cmd_prioritySort_args(TodoList *list, int argc, char *argv[])
+{
+    list->energy = todo_get_args(argc, argv, 2);
+    list->sortingFunc = TODO_SORT_BEST;
+}
+
 /* ======================================
    PRIVATE FUNCTIONS
    ====================================== */

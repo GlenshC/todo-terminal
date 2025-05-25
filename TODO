@@ -1,18 +1,16 @@
 ADD:
-TODO LIST GROW, because its like a static size
-change to dynamically resizing stream
-add [todo done | todo undo]?
-help with invalid command usage 
+TODO LIST PAGES MAX 1024 ITEMS PER PAGE (implement reading and writing)
+TODO LIST GROW, because its like a static size, change to dynamically resizing stream OR periodic stream flushing when add new
 DOCUMENT -r --reverse as sorting in descending order
 DOCUMENT --sort -s and -E in list/sorting
 Add filtering  --filter "key=value,ket2=value2"
+help with invalid command usage
 
 list filters (like showing only the specific priorities or filtering out whats done)
 add age decay for no deadline (increases the points 1pt/week) (might need to balance it out)
 waste items always ties so maybe introduce -+5pts randomness
 
 REDESIGN:
-CHANGE FROM OVERLY ENGINEERED BSTed index sorting TO QSORTed index sorting
 
 fix:
 
@@ -23,6 +21,9 @@ edit string sizes not changed after edit
 free_todolist
 
 ADDED
+add [todo done | todo undo]?
+CHANGE FROM OVERLY ENGINEERED BSTed index sorting TO QSORTed index sorting
+added QSORT
 soring arg from --priority to --sort priority or -s priority
 FASTER edit, remove, view when id arg is provided (skips sorting)
 add list args descending and ascending (-r | --reverse)
